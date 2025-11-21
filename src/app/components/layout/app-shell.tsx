@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { usePathname } from 'next/navigation';
 import { Header } from './header';
 import { Sidebar } from './sidebar';
 import { StatusBar } from './status-bar';
@@ -16,6 +17,8 @@ interface AppShellProps {
 export function AppShell({ children, className }: AppShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
   const [isAIAssistantOpen, setIsAIAssistantOpen] = React.useState(false);
+  const pathname = usePathname();
+  const hideSidebar = pathname === '/';
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -28,17 +31,29 @@ export function AppShell({ children, className }: AppShellProps) {
   return (
     <div className={cn('flex h-screen flex-col', className)}>
       <SkipLinks />
-      <Header onMenuToggle={toggleSidebar} isSidebarOpen={isSidebarOpen} />
+      <Header
+        onMenuToggle={toggleSidebar}
+        isSidebarOpen={isSidebarOpen && !hideSidebar}
+        hideSidebar={hideSidebar}
+      />
       
       <div className="flex flex-1 overflow-hidden">
-        <aside id="sidebar-navigation" className="flex-shrink-0">
-          <Sidebar 
-            isOpen={isSidebarOpen} 
-            onAIAssistantToggle={toggleAIAssistant}
-          />
-        </aside>
+        {!hideSidebar && (
+          <aside id="sidebar-navigation" className="flex-shrink-0">
+            <Sidebar 
+              isOpen={isSidebarOpen}
+            />
+          </aside>
+        )}
         
-        <main id="main-content" className="flex-1 overflow-hidden" role="main">
+        <main
+          id="main-content"
+          className={cn(
+            'flex-1 overflow-hidden',
+            hideSidebar && 'px-4'
+          )}
+          role="main"
+        >
           <div className="h-full overflow-auto">
             {children}
           </div>
