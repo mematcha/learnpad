@@ -122,8 +122,6 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     font-family: var(--font-sans), var(--font-roboto), system-ui, sans-serif;
-    /* letter-spacing: 0.015em; */
-    /* line-height: 0.9; */
   }
 
   code, pre {
