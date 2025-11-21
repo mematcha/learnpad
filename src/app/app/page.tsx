@@ -36,20 +36,20 @@ export default function Home() {
           </p>
           <div className="grid gap-4 md:grid-cols-2">
             <Feature
-              title="Interactive Notebooks"
-              description="Create rich documents with text, code, and mathematical notation."
+              title="Adaptive Notebooks"
+              description="Capture everything in one place. Organize lessons, notes, and inline updates."
             />
             <Feature
-              title="AI Assistant"
-              description="Get personalized help and adaptive content recommendations."
+              title="Teaching Agent"
+              description="Keep an AI tutor at your side. Ask questions, request explanations, and get tailored recommendations on demand."
             />
             <Feature
-              title="Code Sandboxes"
-              description="Practice coding with multi-language support and IntelliSense." 
+              title="Interactive Practice"
+              description="Solve runnable exercises inside each lesson. Auto-check math/code answers and receive instant feedback as you learn."
             />
             <Feature
-              title="Progress Tracking"
-              description="Monitor your learning journey with detailed analytics."
+              title="Sandboxes"
+              description="Spin up interactive environments for code or math problems, and get instant feedback." 
             />
           </div>
         </section>
