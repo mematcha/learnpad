@@ -7,6 +7,7 @@ import { NotebookEditor } from '@/components/editor/notebook-editor';
 import { Button } from '@/components/ui/button';
 import { Eye, Code2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ChatInterface } from '@/components/ai/chat-interface';
 
 const notebookContent = `
   <h1>Welcome to Learnpad</h1>
@@ -60,14 +61,12 @@ const defaultCodeCells = [
 
 export default function NotebookPage() {
   const [mode, setMode] = React.useState<'view' | 'code'>('view');
+  const [chatMode, setChatMode] = React.useState<'teach' | 'chat'>('teach');
 
   return (
     <AppShell>
       <div className="flex h-full flex-col">
         <div className="flex items-center justify-end gap-2 px-4 pt-4">
-          <div className="text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground">
-            Mode
-          </div>
           <div className="inline-flex rounded-md border bg-muted/40 p-0.5 text-xs">
             <ToggleButton
               icon={<Eye className="h-3.5 w-3.5" />}
@@ -92,6 +91,13 @@ export default function NotebookPage() {
               <NotebookEditor initialCells={defaultCodeCells} hideActions />
             </div>
           )}
+          <div className="border-t mt-6 pt-4">
+            <ChatInterface
+              className="max-h-[500px]"
+              mode={chatMode}
+              onModeChange={setChatMode}
+            />
+          </div>
         </div>
       </div>
     </AppShell>

@@ -17,6 +17,8 @@ import { cn } from '@/lib/utils';
 interface ChatInterfaceProps {
   className?: string;
   onSendMessage?: (message: string) => void;
+  mode?: 'teach' | 'chat';
+  onModeChange?: (mode: 'teach' | 'chat') => void;
 }
 
 // Mock initial messages
@@ -24,16 +26,38 @@ const initialMessages: ChatMessage[] = [
   {
     id: '1',
     role: 'assistant',
-    content: 'Hello! I\'m your AI learning assistant. I can help you with explanations, answer questions, provide coding examples, and guide you through your learning journey. What would you like to learn about today?',
+    content:
+      "Hello! I'm your AI learning assistant. I can help you with explanations, answer questions, provide coding examples, and guide you through your learning journey. What would you like to learn about today?",
     timestamp: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
   },
 ];
 
-export function ChatInterface({ className, onSendMessage }: ChatInterfaceProps) {
+export function ChatInterface({
+  className,
+  onSendMessage,
+  mode = 'teach',
+  onModeChange,
+}: ChatInterfaceProps) {
   const [messages, setMessages] = React.useState<ChatMessage[]>(initialMessages);
   const [inputValue, setInputValue] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
+  const [internalMode, setInternalMode] = React.useState<'teach' | 'chat'>(mode);
+  const currentMode = onModeChange ? mode : internalMode;
+
+  React.useEffect(() => {
+    if (mode !== internalMode) {
+      setInternalMode(mode);
+    }
+  }, [mode]);
+
+  const handleModeChange = (nextMode: 'teach' | 'chat') => {
+    if (onModeChange) {
+      onModeChange(nextMode);
+    } else {
+      setInternalMode(nextMode);
+    }
+  };
 
   const scrollToBottom = () => {
     if (scrollAreaRef.current) {
@@ -123,15 +147,47 @@ export function ChatInterface({ className, onSendMessage }: ChatInterfaceProps) 
       {/* Input Area */}
       <div className="p-4 border-t">
         <div className="flex items-end space-x-2">
-          <div className="flex-1">
+          <div className="relative flex-1">
             <Input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask me anything about your learning..."
+              placeholder={
+                currentMode === 'teach'
+                  ? 'Ask the AI tutor for guidance...'
+                  : 'Chat with the assistant...'
+              }
               disabled={isLoading}
-              className="min-h-[40px] resize-none"
+              className="min-h-[44px] resize-none pr-28"
             />
+            <div className="absolute inset-y-1 right-1 flex items-center">
+              <div className="inline-flex rounded-md border bg-background p-0.5 text-[11px] font-medium">
+                <button
+                  type="button"
+                  onClick={() => handleModeChange('teach')}
+                  className={cn(
+                    'px-2 py-1 rounded-sm transition-colors',
+                    currentMode === 'teach'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-primary'
+                  )}
+                >
+                  Teach
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleModeChange('chat')}
+                  className={cn(
+                    'px-2 py-1 rounded-sm transition-colors',
+                    currentMode === 'chat'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-primary'
+                  )}
+                >
+                  Chat
+                </button>
+              </div>
+            </div>
           </div>
           
           <div className="flex items-center space-x-1">
