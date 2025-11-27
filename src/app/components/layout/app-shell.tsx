@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Header } from './header';
 import { Sidebar } from './sidebar';
 import { StatusBar } from './status-bar';
-import { AIAssistantPanel } from '@/components/ai';
+import { AIAssistantPanel, ChatInterface } from '@/components/ai';
 import { SkipLinks } from '@/components/accessibility';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +17,7 @@ interface AppShellProps {
 export function AppShell({ children, className }: AppShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
   const [isAIAssistantOpen, setIsAIAssistantOpen] = React.useState(false);
+  const [isChatOpen, setIsChatOpen] = React.useState(false);
   const pathname = usePathname();
   const hideSidebar = pathname === '/';
 
@@ -26,6 +27,10 @@ export function AppShell({ children, className }: AppShellProps) {
 
   const toggleAIAssistant = () => {
     setIsAIAssistantOpen(!isAIAssistantOpen);
+  };
+
+  const handleToggleChat = () => {
+    setIsChatOpen((prev) => !prev);
   };
 
   return (
@@ -42,6 +47,8 @@ export function AppShell({ children, className }: AppShellProps) {
           <aside id="sidebar-navigation" className="flex-shrink-0">
             <Sidebar 
               isOpen={isSidebarOpen}
+              isChatOpen={isChatOpen}
+              onOpenChat={handleToggleChat}
             />
           </aside>
         )}
@@ -55,7 +62,7 @@ export function AppShell({ children, className }: AppShellProps) {
           role="main"
         >
           <div className="h-full overflow-auto">
-            {children}
+            {isChatOpen ? <ChatInterface className="h-full" /> : children}
           </div>
         </main>
       </div>

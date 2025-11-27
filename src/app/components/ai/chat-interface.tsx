@@ -136,7 +136,7 @@ export function ChatInterface({ className, onSendMessage }: ChatInterfaceProps) 
           
           <div className="flex items-center space-x-1">
             <TooltipProvider>
-              <Tooltip>
+              {/* <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="icon" disabled={isLoading}>
                     <Paperclip className="h-4 w-4" />
@@ -145,18 +145,7 @@ export function ChatInterface({ className, onSendMessage }: ChatInterfaceProps) 
                 <TooltipContent>
                   <p>Attach file</p>
                 </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" disabled={isLoading}>
-                    <Mic className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Voice input</p>
-                </TooltipContent>
-              </Tooltip>
+              </Tooltip> */}
 
               <Tooltip>
                 <TooltipTrigger asChild>

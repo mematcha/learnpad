@@ -14,10 +14,12 @@ import {
 
 interface SidebarProps {
   isOpen: boolean;
+  isChatOpen: boolean;
+  onOpenChat: () => void;
   className?: string;
 }
 
-export function Sidebar({ isOpen, className }: SidebarProps) {
+export function Sidebar({ isOpen, isChatOpen, onOpenChat, className }: SidebarProps) {
   const pathname = usePathname();
   const projectLabel = pathname?.startsWith('/notebook') ? 'TEST-PROJECT' : 'Projects';
   const [isProjectsOpen, setIsProjectsOpen] = React.useState(true);
@@ -212,9 +214,10 @@ export function Sidebar({ isOpen, className }: SidebarProps) {
       <div className="p-2">
         <button
           type="button"
+          onClick={onOpenChat}
           className="w-full rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-foreground/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          Open Chat
+          {isChatOpen ? 'Close Chat' : 'Open Chat'}
         </button>
       </div>
     </div>
