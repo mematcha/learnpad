@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Menu, BookOpen, User, Settings } from 'lucide-react';
+import { Menu, BookOpen, User, Settings, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeSwitcher } from '@/components/ui/theme-switcher';
 import { KeyboardShortcutsHelp } from '@/components/accessibility';
@@ -11,6 +11,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface HeaderProps {
   onMenuToggle: () => void;
@@ -63,17 +71,35 @@ export function Header({ onMenuToggle, isSidebarOpen, hideSidebar = false }: Hea
                 </TooltipContent>
               </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-7 w-7">
                     <User className="h-3 w-3" />
                     <span className="sr-only">User profile</span>
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>User Profile</p>
-                </TooltipContent>
-              </Tooltip>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium">User Account</p>
+                      <p className="text-xs text-muted-foreground">
+                        user@example.com
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => {
+                      // TODO: Implement logout logic
+                      console.log('Logout clicked');
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Logout</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </TooltipProvider>
           </nav>
         </div>

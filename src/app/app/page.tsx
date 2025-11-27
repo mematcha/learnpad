@@ -1,7 +1,35 @@
+'use client';
+
+import * as React from 'react';
 import { AppShell } from '@/components/layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Modal, Button } from '@/components/ui';
+import { ProjectCreationChat } from '@/components/workspace/project-creation-chat';
+import { RecentProjectsList } from '@/components/workspace/recent-projects-list';
 
 export default function Home() {
+  const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
+  const [isRecentProjectsModalOpen, setIsRecentProjectsModalOpen] = React.useState(false);
+  const [projectConfig, setProjectConfig] = React.useState<{
+    name?: string;
+    agents?: string[];
+    resources?: string[];
+  } | null>(null);
+
+  const handleProjectComplete = (config: {
+    name?: string;
+    agents?: string[];
+    resources?: string[];
+  }) => {
+    setProjectConfig(config);
+  };
+
+  const handleCreateProject = () => {
+    // TODO: Implement project creation logic with config
+    console.log('Creating project with config:', projectConfig);
+    setIsCreateModalOpen(false);
+    setProjectConfig(null);
+  };
+
   return (
     <AppShell>
       <div className="w-full max-w-4xl mx-auto px-4 py-8">
@@ -17,12 +45,14 @@ export default function Home() {
         <div className="flex gap-2 justify-center">
           <button
             type="button"
+            onClick={() => setIsCreateModalOpen(true)}
             className="inline-flex items-center px-3 py-1.5 rounded-md bg-transparent text-xs font-normal transition hover:bg-neutral-100/70 dark:hover:bg-neutral-800/80"
           >
             Create New Project
           </button>
           <button
             type="button"
+            onClick={() => setIsRecentProjectsModalOpen(true)}
             className="inline-flex items-center px-3 py-1.5 rounded-md bg-transparent text-xs font-normal transition hover:bg-neutral-100/70 dark:hover:bg-neutral-800/80"
           >
             Recent Projects
@@ -54,6 +84,63 @@ export default function Home() {
           </div>
         </section>
       </div>
+
+      <Modal
+        open={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
+        title="Create New Project"
+        description="Chat with our AI assistant to configure your project"
+        size="lg"
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsCreateModalOpen(false);
+                setProjectConfig(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateProject}
+              disabled={!projectConfig?.name}
+            >
+              Create Project
+            </Button>
+          </>
+        }
+      >
+        <ProjectCreationChat
+          onComplete={handleProjectComplete}
+          className="h-[500px]"
+        />
+      </Modal>
+
+      <Modal
+        open={isRecentProjectsModalOpen}
+        onOpenChange={setIsRecentProjectsModalOpen}
+        title="Recent Projects"
+        description="Search and open your recent learning projects"
+        size="lg"
+        footer={
+          <Button
+            variant="outline"
+            onClick={() => setIsRecentProjectsModalOpen(false)}
+          >
+            Close
+          </Button>
+        }
+      >
+        <RecentProjectsList
+          onProjectClick={(project) => {
+            console.log('Opening project:', project);
+            // TODO: Navigate to project or open it
+            setIsRecentProjectsModalOpen(false);
+          }}
+          className="h-[400px]"
+        />
+      </Modal>
     </AppShell>
   );
 }
