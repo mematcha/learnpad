@@ -26,6 +26,8 @@ interface NotebookEditorProps {
   initialCells?: NotebookCell[];
   onSave?: (cells: NotebookCell[]) => void;
   className?: string;
+  readOnly?: boolean;
+  hideActions?: boolean;
 }
 
 export function NotebookEditor({
@@ -38,11 +40,14 @@ export function NotebookEditor({
   ],
   onSave,
   className,
+  readOnly = false,
+  hideActions = false,
 }: NotebookEditorProps) {
   const [cells, setCells] = React.useState<NotebookCell[]>(initialCells);
   const [activeCell, setActiveCell] = React.useState<string | null>(null);
 
   const addCell = (type: CellType, afterId?: string) => {
+    if (readOnly) return;
     const newCell: NotebookCell = {
       id: Date.now().toString(),
       type,
@@ -62,12 +67,14 @@ export function NotebookEditor({
   };
 
   const updateCell = (id: string, content: string) => {
+    if (readOnly) return;
     setCells((prev) =>
       prev.map((cell) => (cell.id === id ? { ...cell, content } : cell))
     );
   };
 
   const deleteCell = (id: string) => {
+    if (readOnly) return;
     if (cells.length > 1) {
       setCells((prev) => prev.filter((cell) => cell.id !== id));
     }
@@ -95,41 +102,43 @@ export function NotebookEditor({
   return (
     <div className={cn('max-w-4xl mx-auto p-6 space-y-4', className)}>
       {/* Notebook Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Untitled Notebook</h1>
-          <p className="text-sm text-muted-foreground">
-            Last saved: {new Date().toLocaleTimeString()}
-          </p>
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" onClick={handleSave}>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Save notebook</p>
-              </TooltipContent>
-            </Tooltip>
+      {!hideActions && (
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold">Untitled Notebook</h1>
+            <p className="text-sm text-muted-foreground">
+              Last saved: {new Date().toLocaleTimeString()}
+            </p>
+          </div>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>More options</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <div className="flex items-center space-x-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" onClick={handleSave}>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Save notebook</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>More options</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Notebook Cells */}
       <div className="space-y-4">
@@ -145,31 +154,33 @@ export function NotebookEditor({
             onRun={() => runCodeCell(cell.id)}
             onAddCell={(type) => addCell(type, cell.id)}
             canDelete={cells.length > 1}
+            readOnly={readOnly}
           />
         ))}
       </div>
 
-      {/* Add Cell Button */}
-      <div className="flex justify-center pt-4">
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => addCell('text')}
-          >
-            <FileText className="h-4 w-4 mr-2" />
-            Add Text Cell
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => addCell('code')}
-          >
-            <Code2 className="h-4 w-4 mr-2" />
-            Add Code Cell
-          </Button>
+      {!hideActions && (
+        <div className="flex justify-center pt-4">
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => addCell('text')}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Add Text Cell
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => addCell('code')}
+            >
+              <Code2 className="h-4 w-4 mr-2" />
+              Add Code Cell
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -184,6 +195,7 @@ interface NotebookCellProps {
   onRun: () => void;
   onAddCell: (type: CellType) => void;
   canDelete: boolean;
+  readOnly: boolean;
 }
 
 function NotebookCell({
@@ -196,11 +208,12 @@ function NotebookCell({
   onRun,
   onAddCell,
   canDelete,
+  readOnly,
 }: NotebookCellProps) {
   return (
     <Card
       className={cn(
-        'transition-all duration-200',
+        'border-none bg-transparent shadow-none transition-all duration-200',
         isActive && 'ring-2 ring-primary ring-offset-2'
       )}
     >
@@ -218,7 +231,7 @@ function NotebookCell({
           </div>
           
           <div className="flex items-center space-x-1">
-            {cell.type === 'code' && (
+            {cell.type === 'code' && !readOnly && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -233,24 +246,8 @@ function NotebookCell({
               </TooltipProvider>
             )}
             
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onAddCell('text')}
-                  >
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Add cell below</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
 
-            {canDelete && (
+            {canDelete && !readOnly && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -281,27 +278,34 @@ function NotebookCell({
             onFocus={onFocus}
             onBlur={onBlur}
             placeholder="Enter your text here. You can use markdown, math formulas with $LaTeX$, and rich formatting."
+            editable={!readOnly}
+            showToolbar={!readOnly}
+            bordered={!readOnly}
           />
         ) : (
-          <div className="space-y-2">
-            <textarea
-              value={cell.content}
-              onChange={(e) => onChange(e.target.value)}
-              onFocus={onFocus}
-              onBlur={onBlur}
-              placeholder="# Enter your code here
+            <div className="space-y-2">
+              <textarea
+                value={cell.content}
+                onChange={(e) => onChange(e.target.value)}
+                onFocus={onFocus}
+                onBlur={onBlur}
+                placeholder="# Enter your code here
 print('Hello, Learnpad!')
 "
-              className="w-full min-h-[120px] p-3 font-mono text-sm border rounded-md bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 resize-none"
-            />
-            
-            {cell.output && (
-              <div className="p-3 bg-muted rounded-md">
-                <div className="text-xs text-muted-foreground mb-1">Output:</div>
-                <pre className="text-sm font-mono">{cell.output}</pre>
-              </div>
-            )}
-          </div>
+                className={cn(
+                  'w-full min-h-[120px] p-3 font-mono text-sm border rounded-md bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 resize-none',
+                  readOnly && 'pointer-events-none opacity-70'
+                )}
+                readOnly={readOnly}
+              />
+              
+              {cell.output && (
+                <div className="p-3 bg-muted rounded-md">
+                  <div className="text-xs text-muted-foreground mb-1">Output:</div>
+                  <pre className="text-sm font-mono">{cell.output}</pre>
+                </div>
+              )}
+            </div>
         )}
       </CardContent>
     </Card>

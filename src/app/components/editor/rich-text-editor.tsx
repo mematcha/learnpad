@@ -14,6 +14,10 @@ interface RichTextEditorProps {
   placeholder?: string;
   className?: string;
   editable?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  showToolbar?: boolean;
+  bordered?: boolean;
 }
 
 export function RichTextEditor({
@@ -22,6 +26,10 @@ export function RichTextEditor({
   placeholder = 'Start writing...',
   className,
   editable = true,
+  onFocus,
+  onBlur,
+  showToolbar = true,
+  bordered = true,
 }: RichTextEditorProps) {
   const editor = useEditor({
     immediatelyRender: false,
@@ -82,12 +90,14 @@ export function RichTextEditor({
   }
 
   return (
-    <div className={cn('border rounded-lg overflow-hidden', className)}>
-      <EditorToolbar editor={editor} />
+    <div className={cn(bordered ? 'border rounded-lg overflow-hidden' : '', className)}>
+      {showToolbar && <EditorToolbar editor={editor} />}
       <div className="relative">
         <EditorContent
           editor={editor}
           className="min-h-[200px] max-h-[600px] overflow-y-auto"
+          onFocus={onFocus}
+          onBlur={onBlur}
         />
         {editor.isEmpty && (
           <div className="absolute top-4 left-4 text-muted-foreground pointer-events-none">
