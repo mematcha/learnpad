@@ -5,7 +5,7 @@ import { AppShell } from '@/components/layout';
 import { NotebookView } from '@/components/editor/notebook-view';
 import { NotebookEditor } from '@/components/editor/notebook-editor';
 import { Button } from '@/components/ui/button';
-import { Eye, Code2 } from 'lucide-react';
+import { Eye, Code2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ChatInterface } from '@/components/ai/chat-interface';
 
@@ -62,6 +62,7 @@ const defaultCodeCells = [
 export default function NotebookPage() {
   const [mode, setMode] = React.useState<'view' | 'code'>('view');
   const [chatMode, setChatMode] = React.useState<'teach' | 'chat'>('teach');
+  const [isChatOpen, setIsChatOpen] = React.useState(false);
 
   return (
     <AppShell>
@@ -91,13 +92,24 @@ export default function NotebookPage() {
               <NotebookEditor initialCells={defaultCodeCells} hideActions />
             </div>
           )}
-          <div className="border-t mt-6 pt-4">
-            <ChatInterface
-              className="max-h-[500px]"
-              mode={chatMode}
-              onModeChange={setChatMode}
-            />
-          </div>
+          {isChatOpen && (
+            <div className="border-t mt-6 pt-4 relative">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsChatOpen(false)}
+                className="absolute top-2 right-2 z-10 h-8 w-8"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              <ChatInterface
+                className="max-h-[500px]"
+                mode={chatMode}
+                onModeChange={setChatMode}
+              />
+            </div>
+          )}
         </div>
       </div>
     </AppShell>
