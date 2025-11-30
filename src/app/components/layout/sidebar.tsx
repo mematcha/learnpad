@@ -2,8 +2,8 @@
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
-import { usePathname } from 'next/navigation';
-import { FolderOpen, TerminalSquare, BookOpen, ChevronDown } from 'lucide-react';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { FolderOpen, TerminalSquare, BookOpen, ChevronDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -11,20 +11,78 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { FileTree } from '@/components/workspace';
+import { notebookAPI } from '@/lib/api/client';
+import { transformApiTreeToArborist, FileTreeNode } from '@/lib/utils/tree-utils';
 
 interface SidebarProps {
   isOpen: boolean;
   isChatOpen: boolean;
   onOpenChat: () => void;
+  notebookId?: string;
   className?: string;
 }
 
-export function Sidebar({ isOpen, isChatOpen, onOpenChat, className }: SidebarProps) {
+export function Sidebar({ isOpen, isChatOpen, onOpenChat, notebookId, className }: SidebarProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const projectLabel = pathname?.startsWith('/notebook') ? 'TEST-PROJECT' : 'Projects';
   const [isProjectsOpen, setIsProjectsOpen] = React.useState(true);
   const [isSandboxesOpen, setIsSandboxesOpen] = React.useState(true);
   const [isSourcesOpen, setIsSourcesOpen] = React.useState(true);
+  
+  // File tree state
+  const [fileTreeData, setFileTreeData] = React.useState<FileTreeNode[]>([]);
+  const [isLoadingTree, setIsLoadingTree] = React.useState(false);
+  const [treeError, setTreeError] = React.useState<string | null>(null);
+  const [selectedFilePath, setSelectedFilePath] = React.useState<string | undefined>();
+
+  // Extract notebook ID from URL or use prop
+  const currentNotebookId = React.useMemo(() => {
+    if (notebookId) return notebookId;
+    if (pathname?.startsWith('/notebook')) {
+      // Try to extract from URL path or search params
+      const pathParts = pathname.split('/');
+      if (pathParts.length > 2 && pathParts[2]) {
+        return pathParts[2];
+      }
+      return searchParams?.get('id') || undefined;
+    }
+    return undefined;
+  }, [pathname, searchParams, notebookId]);
+
+  // Fetch file tree when notebook ID is available
+  React.useEffect(() => {
+    if (!currentNotebookId || !isProjectsOpen || !isOpen) {
+      setFileTreeData([]);
+      return;
+    }
+
+    setIsLoadingTree(true);
+    setTreeError(null);
+
+    notebookAPI
+      .getNotebookTree(currentNotebookId)
+      .then((response) => {
+        const tree = response.tree || {};
+        const transformed = transformApiTreeToArborist(tree);
+        setFileTreeData(transformed);
+      })
+      .catch((error) => {
+        console.error('Failed to load file tree:', error);
+        setTreeError('Failed to load file tree');
+        setFileTreeData([]);
+      })
+      .finally(() => {
+        setIsLoadingTree(false);
+      });
+  }, [currentNotebookId, isProjectsOpen, isOpen]);
+
+  const handleFileSelect = React.useCallback((node: FileTreeNode) => {
+    setSelectedFilePath(node.path);
+    // TODO: Handle file selection (e.g., open file in editor)
+    console.log('Selected file:', node.path);
+  }, []);
 
   return (
     <div
@@ -68,49 +126,37 @@ export function Sidebar({ isOpen, isChatOpen, onOpenChat, className }: SidebarPr
             )}
           </Tooltip>
           {isOpen && isProjectsOpen && (
-            <div className="ml-8 space-y-3 text-xs text-muted-foreground">
-              <div>
-                <ul className="space-y-1 text-foreground text-sm">
-                  <li>
-                    <div className="font-medium">📁 notebooks</div>
-                    <ul className="ml-4 space-y-0.5 text-muted-foreground">
-                      <li>
-                        <button className="w-full rounded-md px-2 py-1 text-left text-xs text-foreground hover:bg-foreground/10 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                          📄 introduction.md
-                        </button>
-                      </li>
-                      <li>
-                        <button className="w-full rounded-md px-2 py-1 text-left text-xs text-foreground hover:bg-foreground/10 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                          📄 advanced-topics.md
-                        </button>
-                      </li>
-                      <li>
-                        <div className="font-medium">📁 experiments</div>
-                      </li>
-                    </ul>
-                  </li>
-                  <li>
-                    <div className="font-medium">📁 sandboxes</div>
-                    <ul className="ml-4 space-y-0.5 text-muted-foreground">
-                      <li>
-                        <button className="w-full rounded-md px-2 py-1 text-left text-xs text-foreground hover:bg-foreground/10 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                          📄 python-basics.tsx
-                        </button>
-                      </li>
-                      <li>
-                        <button className="w-full rounded-md px-2 py-1 text-left text-xs text-foreground hover:bg-foreground/10 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                          📄 js-math-playground.tsx
-                        </button>
-                      </li>
-                    </ul>
-                  </li>
-                  <li>
-                    <button className="w-full rounded-md px-2 py-1 text-left text-xs text-foreground hover:bg-foreground/10 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                      📄 README.md
-                    </button>
-                  </li>
-                </ul>
-              </div>
+            <div className="ml-2 mt-2">
+              {currentNotebookId ? (
+                <>
+                  {isLoadingTree ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : treeError ? (
+                    <div className="px-2 py-4 text-xs text-destructive">
+                      {treeError}
+                    </div>
+                  ) : fileTreeData.length > 0 ? (
+                    <div className="max-h-[calc(100vh-300px)] overflow-auto">
+                      <FileTree
+                        data={fileTreeData}
+                        onSelect={handleFileSelect}
+                        selectedPath={selectedFilePath}
+                        height={Math.min(fileTreeData.length * 28, 400)}
+                      />
+                    </div>
+                  ) : (
+                    <div className="px-2 py-4 text-xs text-muted-foreground">
+                      No files found
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="px-2 py-4 text-xs text-muted-foreground">
+                  Open a notebook to view files
+                </div>
+              )}
             </div>
           )}
           <Tooltip>

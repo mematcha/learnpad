@@ -136,6 +136,24 @@ export const notebookAPI = {
     const response = await apiClient.post('/api/notebooks/generate', config);
     return response.data;
   },
+
+  /**
+   * Get notebook file tree
+   */
+  getNotebookTree: async (notebookId: string) => {
+    const response = await apiClient.get(`/api/notebooks/${notebookId}/tree`);
+    return response.data;
+  },
+
+  /**
+   * List notebook files
+   */
+  listNotebookFiles: async (notebookId: string, prefix?: string) => {
+    const response = await apiClient.get(`/api/notebooks/${notebookId}/files`, {
+      params: { prefix },
+    });
+    return response.data;
+  },
 };
 
 // Assessment API methods

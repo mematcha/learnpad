@@ -5,6 +5,7 @@ export {
   prefersReducedMotion,
   createSkipLink,
 } from './keyboard';
+export { transformApiTreeToArborist, type FileTreeNode, type ApiTreeItem } from './tree-utils';
 
 /**
  * Format file size in human readable format
