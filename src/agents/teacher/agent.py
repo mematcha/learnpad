@@ -11,7 +11,6 @@ import json
 # Use defensive imports so teacher agent can still load if some agents fail
 concept_explainer_agent = None
 code_reviewer_agent = None
-assessment_checker_agent = None
 content_generator_agent = None
 curriculum_planner_agent = None
 user_assessment_agent = None
@@ -25,11 +24,6 @@ try:
     from ..code_reviewer.agent import root_agent as code_reviewer_agent
 except ImportError as e:
     print(f"Warning: Could not import code_reviewer_agent: {e}")
-
-try:
-    from ..assessment_checker.agent import root_agent as assessment_checker_agent
-except ImportError as e:
-    print(f"Warning: Could not import assessment_checker_agent: {e}")
 
 try:
     from ..content_generator.agent import root_agent as content_generator_agent
@@ -74,7 +68,6 @@ Your core responsibilities:
    - Delegate appropriately based on the student's needs:
      * concept_explainer_agent: For learning new concepts, explanations, Q&A
      * code_reviewer_agent: For code review, debugging, and code improvement
-     * assessment_checker_agent: For practice exercises, assessments, and understanding checks
      * content_generator_agent: For creating additional content, examples, exercises
      * curriculum_planner_agent: For learning path planning and curriculum structure
      * user_assessment_agent: For initial assessments and preference analysis
@@ -537,45 +530,45 @@ def adapt_teaching_strategy(
     }
 
 
-def conduct_assessment(
+def suggest_practice_checkpoint(
     user_id: str,
     topic: str,
-    assessment_type: str = "checkpoint"
+    practice_type: str = "self_practice"
 ) -> Dict[str, Any]:
     """
-    Coordinate an assessment for the student.
+    Suggest a self-practice checkpoint for the student.
     
     Args:
         user_id: Unique identifier for the user
-        topic: Topic to assess
-        assessment_type: Type of assessment (checkpoint, final, practice, etc.)
+        topic: Topic for practice
+        practice_type: Type of practice (self_practice, exercise, exploration)
     
     Returns:
-        Dictionary with assessment coordination status
+        Dictionary with practice suggestion
     """
     memory = _user_memory.get(user_id, {})
     progress = _user_progress.get(user_id, {})
     
-    # Record assessment request
-    assessment_record = {
+    # Record practice suggestion
+    practice_record = {
         "user_id": user_id,
         "topic": topic,
-        "assessment_type": assessment_type,
-        "requested_at": datetime.now(timezone.utc).isoformat(),
-        "status": "pending"
+        "practice_type": practice_type,
+        "suggested_at": datetime.now(timezone.utc).isoformat(),
+        "status": "suggested",
+        "note": "Use content_generator_agent to create practice exercises"
     }
     
-    if "assessments" not in memory:
-        memory["assessments"] = []
-    memory["assessments"].append(assessment_record)
+    if "practice_suggestions" not in memory:
+        memory["practice_suggestions"] = []
+    memory["practice_suggestions"].append(practice_record)
     
     return {
         "status": "success",
-        "message": f"Assessment coordinated for topic: {topic}",
-        "assessment": assessment_record,
-        "instruction": "Use assessment_checker_agent to conduct the actual assessment"
+        "message": f"Practice checkpoint suggested for topic: {topic}",
+        "practice": practice_record,
+        "instruction": "Use content_generator_agent to create practice exercises for self-directed learning"
     }
-
 
 # Build tools list conditionally - only include agents that were successfully imported
 teacher_tools = [
@@ -592,8 +585,8 @@ teacher_tools = [
     should_intervene,
     adapt_teaching_strategy,
     
-    # Assessment coordination
-    conduct_assessment,
+    # Practice suggestion
+    suggest_practice_checkpoint,
 ]
 
 # Add specialist agents only if they were successfully imported
@@ -601,8 +594,6 @@ if concept_explainer_agent is not None:
     teacher_tools.append(AgentTool(agent=concept_explainer_agent))
 if code_reviewer_agent is not None:
     teacher_tools.append(AgentTool(agent=code_reviewer_agent))
-if assessment_checker_agent is not None:
-    teacher_tools.append(AgentTool(agent=assessment_checker_agent))
 if content_generator_agent is not None:
     teacher_tools.append(AgentTool(agent=content_generator_agent))
 if curriculum_planner_agent is not None:
