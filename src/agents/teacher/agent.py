@@ -7,13 +7,44 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone
 import json
 
-# Import your specialist agents
-from agents.concept_explainer.agent import root_agent as concept_explainer_agent
-from agents.code_reviewer.agent import root_agent as code_reviewer_agent
-from agents.assessment_checker.agent import root_agent as assessment_checker_agent
-from agents.content_generator.agent import root_agent as content_generator_agent
-from agents.curriculum_planner.agent import root_agent as curriculum_planner_agent
-from agents.user_assessment.agent import root_agent as user_assessment_agent
+# Import your specialist agents (using relative imports for ADK compatibility)
+# Use defensive imports so teacher agent can still load if some agents fail
+concept_explainer_agent = None
+code_reviewer_agent = None
+assessment_checker_agent = None
+content_generator_agent = None
+curriculum_planner_agent = None
+user_assessment_agent = None
+
+try:
+    from ..concept_explainer.agent import root_agent as concept_explainer_agent
+except ImportError as e:
+    print(f"Warning: Could not import concept_explainer_agent: {e}")
+
+try:
+    from ..code_reviewer.agent import root_agent as code_reviewer_agent
+except ImportError as e:
+    print(f"Warning: Could not import code_reviewer_agent: {e}")
+
+try:
+    from ..assessment_checker.agent import root_agent as assessment_checker_agent
+except ImportError as e:
+    print(f"Warning: Could not import assessment_checker_agent: {e}")
+
+try:
+    from ..content_generator.agent import root_agent as content_generator_agent
+except ImportError as e:
+    print(f"Warning: Could not import content_generator_agent: {e}")
+
+try:
+    from ..curriculum_planner.agent import root_agent as curriculum_planner_agent
+except ImportError as e:
+    print(f"Warning: Could not import curriculum_planner_agent: {e}")
+
+try:
+    from ..user_assessment.agent import root_agent as user_assessment_agent
+except ImportError as e:
+    print(f"Warning: Could not import user_assessment_agent: {e}")
 
 retry_config = types.HttpRetryOptions(
     attempts=5,
@@ -546,6 +577,39 @@ def conduct_assessment(
     }
 
 
+# Build tools list conditionally - only include agents that were successfully imported
+teacher_tools = [
+    # Memory and progress management
+    get_user_memory,
+    update_user_memory,
+    track_progress,
+    get_student_progress,
+    
+    # Note creation
+    create_additional_note,
+    
+    # Decision making
+    should_intervene,
+    adapt_teaching_strategy,
+    
+    # Assessment coordination
+    conduct_assessment,
+]
+
+# Add specialist agents only if they were successfully imported
+if concept_explainer_agent is not None:
+    teacher_tools.append(AgentTool(agent=concept_explainer_agent))
+if code_reviewer_agent is not None:
+    teacher_tools.append(AgentTool(agent=code_reviewer_agent))
+if assessment_checker_agent is not None:
+    teacher_tools.append(AgentTool(agent=assessment_checker_agent))
+if content_generator_agent is not None:
+    teacher_tools.append(AgentTool(agent=content_generator_agent))
+if curriculum_planner_agent is not None:
+    teacher_tools.append(AgentTool(agent=curriculum_planner_agent))
+if user_assessment_agent is not None:
+    teacher_tools.append(AgentTool(agent=user_assessment_agent))
+
 root_agent = Agent(
     model=Gemini(
         model="gemini-2.5-flash",
@@ -554,29 +618,5 @@ root_agent = Agent(
     name="teacher_agent",
     description="Master teacher and central orchestrator with persistent memory that manages the entire learning experience",
     instruction=INSTRUCTION_TEXT,
-    tools=[
-        # Memory and progress management
-        get_user_memory,
-        update_user_memory,
-        track_progress,
-        get_student_progress,
-        
-        # Note creation
-        create_additional_note,
-        
-        # Decision making
-        should_intervene,
-        adapt_teaching_strategy,
-        
-        # Assessment coordination
-        conduct_assessment,
-        
-        # Specialist agents
-        AgentTool(agent=concept_explainer_agent),
-        AgentTool(agent=code_reviewer_agent),
-        AgentTool(agent=assessment_checker_agent),
-        AgentTool(agent=content_generator_agent),
-        AgentTool(agent=curriculum_planner_agent),
-        AgentTool(agent=user_assessment_agent),
-    ],
+    tools=teacher_tools,
 )
