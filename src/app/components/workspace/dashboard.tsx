@@ -12,6 +12,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useAuthStore } from '@/lib/stores/auth-store';
 
 // Mock data for demonstration
 const mockProjects = [
@@ -54,6 +55,7 @@ const mockProjects = [
 ];
 
 export function WorkspaceDashboard() {
+  const { isAuthenticated } = useAuthStore();
   const [searchQuery, setSearchQuery] = React.useState('');
   const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('grid');
   const [filteredProjects, setFilteredProjects] = React.useState(mockProjects);
@@ -83,10 +85,12 @@ export function WorkspaceDashboard() {
           </p>
         </div>
         
-        <Button className="w-full md:w-auto">
-          <Plus className="mr-2 h-4 w-4" />
-          New Project
-        </Button>
+        {isAuthenticated && (
+          <Button className="w-full md:w-auto">
+            <Plus className="mr-2 h-4 w-4" />
+            New Project
+          </Button>
+        )}
       </div>
 
       {/* Quick Stats */}
@@ -238,12 +242,14 @@ export function WorkspaceDashboard() {
               }
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create New Project
-            </Button>
-          </CardContent>
+          {isAuthenticated && (
+            <CardContent>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Create New Project
+              </Button>
+            </CardContent>
+          )}
         </Card>
       )}
     </div>

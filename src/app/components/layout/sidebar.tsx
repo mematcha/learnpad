@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { FolderOpen, TerminalSquare, BookOpen, ChevronDown, Loader2 } from 'lucide-react';
+import { FolderOpen, ChevronDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -28,8 +28,6 @@ export function Sidebar({ isOpen, isChatOpen, onOpenChat, notebookId, className 
   const searchParams = useSearchParams();
   const projectLabel = pathname?.startsWith('/notebook') ? 'TEST-PROJECT' : 'Projects';
   const [isProjectsOpen, setIsProjectsOpen] = React.useState(true);
-  const [isSandboxesOpen, setIsSandboxesOpen] = React.useState(true);
-  const [isSourcesOpen, setIsSourcesOpen] = React.useState(true);
   
   // File tree state
   const [fileTreeData, setFileTreeData] = React.useState<FileTreeNode[]>([]);
@@ -157,101 +155,6 @@ export function Sidebar({ isOpen, isChatOpen, onOpenChat, notebookId, className 
                   Open a notebook to view files
                 </div>
               )}
-            </div>
-          )}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                className={cn(
-                  'w-full justify-between',
-                  !isOpen && 'justify-center px-2'
-                )}
-                onClick={() => setIsSandboxesOpen((prev) => !prev)}
-                aria-expanded={isSandboxesOpen}
-              >
-                <div className="flex items-center">
-                  <TerminalSquare className="h-4 w-4" />
-                  {isOpen && <span className="ml-2 text-xs font-medium">Sandboxes</span>}
-                </div>
-                {isOpen && (
-                  <ChevronDown
-                    className={cn(
-                      'h-4 w-4 transition-transform duration-200',
-                      isSandboxesOpen ? 'rotate-0' : '-rotate-90'
-                    )}
-                  />
-                )}
-              </Button>
-            </TooltipTrigger>
-            {!isOpen && (
-              <TooltipContent side="right" className="text-xs leading-none py-1 px-2">
-                <p className="text-xs font-medium">Sandboxes</p>
-              </TooltipContent>
-            )}
-          </Tooltip>
-          {isOpen && isSandboxesOpen && (
-            <div className="ml-8 space-y-1 text-xs text-muted-foreground">
-              <ul className="space-y-0.5 text-xs">
-                <li>
-                  <button className="w-full rounded-md px-2 py-1 text-left text-xs text-foreground hover:bg-foreground/10 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                    Default Sandbox
-                  </button>
-                </li>
-              </ul>
-            </div>
-          )}
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                className={cn(
-                  'w-full justify-between',
-                  !isOpen && 'justify-center px-2'
-                )}
-                onClick={() => setIsSourcesOpen((prev) => !prev)}
-                aria-expanded={isSourcesOpen}
-              >
-                <div className="flex items-center">
-                  <BookOpen className="h-4 w-4" />
-                  {isOpen && <span className="ml-2 text-xs font-medium">Sources</span>}
-                </div>
-                {isOpen && (
-                  <ChevronDown
-                    className={cn(
-                      'h-4 w-4 transition-transform duration-200',
-                      isSourcesOpen ? 'rotate-0' : '-rotate-90'
-                    )}
-                  />
-                )}
-              </Button>
-            </TooltipTrigger>
-            {!isOpen && (
-              <TooltipContent side="right" className="text-xs leading-none py-1 px-2">
-                <p className="text-xs font-medium">Sources</p>
-              </TooltipContent>
-            )}
-          </Tooltip>
-          {isOpen && isSourcesOpen && (
-            <div className="ml-8 space-y-1 text-xs text-muted-foreground">
-              <ul className="space-y-0.5 text-sm">
-                <li>
-                  <button className="w-full rounded-md px-2 py-1 text-left text-xs text-foreground hover:bg-foreground/10 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                    file1.pdf
-                  </button>
-                </li>
-                <li>
-                  <button className="w-full rounded-md px-2 py-1 text-left text-xs text-foreground hover:bg-foreground/10 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                    file2.pdf
-                  </button>
-                </li>
-                <li>
-                  <button className="w-full rounded-md px-2 py-1 text-left text-xs text-foreground hover:bg-foreground/10 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                    file3.pdf
-                  </button>
-                </li>
-              </ul>
             </div>
           )}
         </TooltipProvider>
