@@ -54,6 +54,9 @@ export function Header({ onMenuToggle, isSidebarOpen, hideSidebar = false }: Hea
         <div className="flex items-center space-x-2">
           <BookOpen className="h-4 w-4 md:h-5 md:w-5 text-primary" />
           <span className="font-bold text-xs md:text-sm tracking-tight">Learnpad</span>
+          <span className="ml-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+            mvp
+          </span>
         </div>
 
         <div className="flex flex-1 items-center justify-between space-x-1 md:justify-end">
