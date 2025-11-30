@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Mathematics from '@tiptap/extension-mathematics';
-import { Play, Loader2 } from 'lucide-react';
+import { Play, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import 'katex/dist/katex.min.css';
 import { cn } from '@/lib/utils';
@@ -155,7 +155,26 @@ export function NotebookView({
           runCode(codeId, codeText, language);
         };
 
+        // Create clear output button
+        const clearButton = document.createElement('button');
+        clearButton.className = 'notebook-code-clear-button';
+        clearButton.setAttribute('data-code-id', codeId);
+        clearButton.style.display = 'none'; // Initially hidden
+        clearButton.innerHTML = `
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+          <span>Clear</span>
+        `;
+        
+        clearButton.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          clearOutput(codeId);
+        };
+
         buttonContainer.appendChild(runButton);
+        buttonContainer.appendChild(clearButton);
         menuBar.appendChild(buttonContainer);
         
         // Wrap the pre element
@@ -177,6 +196,21 @@ export function NotebookView({
     const timeout = setTimeout(processCodeBlocks, 200);
     return () => clearTimeout(timeout);
   }, [editor, content]);
+
+  const clearOutput = (codeId: string) => {
+    setCodeBlocks(prev => {
+      const updated = new Map(prev);
+      const block = updated.get(codeId);
+      if (block) {
+        updated.set(codeId, {
+          ...block,
+          output: undefined,
+          error: undefined,
+        });
+      }
+      return updated;
+    });
+  };
 
   const runCode = async (codeId: string, code: string, language: string = 'javascript') => {
     setCodeBlocks(prev => {
@@ -240,7 +274,7 @@ export function NotebookView({
     if (!containerRef.current) return;
 
     codeBlocks.forEach((blockState, codeId) => {
-      // Update button state
+      // Update run button state
       const runButton = containerRef.current?.querySelector(
         `.notebook-code-run-button[data-code-id="${codeId}"]`
       ) as HTMLButtonElement;
@@ -264,6 +298,19 @@ export function NotebookView({
             <span>Run</span>
           `;
           runButton.disabled = false;
+        }
+      }
+
+      // Update clear button visibility
+      const clearButton = containerRef.current?.querySelector(
+        `.notebook-code-clear-button[data-code-id="${codeId}"]`
+      ) as HTMLButtonElement;
+      
+      if (clearButton) {
+        if (blockState.output || blockState.error) {
+          clearButton.style.display = 'flex';
+        } else {
+          clearButton.style.display = 'none';
         }
       }
 
