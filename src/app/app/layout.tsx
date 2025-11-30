@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Roboto, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "../lib/themes/theme-provider";
+import { AuthProvider } from "../components/auth/auth-provider";
 
 const roboto = Roboto({
   variable: "--font-roboto",
@@ -30,9 +31,11 @@ export default function RootLayout({
       <body
         className={`${roboto.className} ${roboto.variable} ${jetbrainsMono.variable} antialiased`}
       >
-        <ThemeProvider>
-        {children}
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            {children}
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

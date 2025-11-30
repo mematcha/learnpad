@@ -17,9 +17,14 @@ import requests
 
 # Add src to path for agent imports
 import sys
+from pathlib import Path
+
 src_path = Path(__file__).parent.parent
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
+
+# Import storage after path is configured
+from storage import gcs_storage
 
 # Import ADK components
 try:
@@ -68,8 +73,14 @@ class Settings(BaseSettings):
     google_client_id: str = Field(default="", env="GOOGLE_CLIENT_ID")
     google_client_secret: str = Field(default="", env="GOOGLE_CLIENT_SECRET")
     
+
+    # GCS Settings
+    gcs_project_id: str = Field(default="learnpad-gcp", env="GCS_PROJECT_ID")
+    gcs_bucket_name: str = Field(default="learnpad-gcp-dev", env="GCS_BUCKET_NAME")
+    gcs_credentials_path: str = Field(default="learnpad-backend-key.json", env="GCS_CREDENTIALS_PATH")
+    gcs_base_path: str = Field(default="users", env="GCS_BASE_PATH")
     # CORS Settings
-    cors_origins: list[str] = Field(default=["http://localhost:3000", "http://localhost:8000"], env="CORS_ORIGINS")
+    cors_origins: list[str] = Field(default=["http://localhost:3000", "http://localhost:8001"], env="CORS_ORIGINS")
     
     # Notebook Settings
     notebooks_base_path: str = Field(default="./notebooks", env="NOTEBOOKS_BASE_PATH")
@@ -130,6 +141,7 @@ class TokenData(BaseModel):
     sub: str
     email: str
     name: str
+    picture: Optional[str] = None
     exp: datetime
     iat: datetime
 
@@ -278,6 +290,7 @@ class JWTHandler:
             "sub": user_data["sub"],
             "email": user_data["email"],
             "name": user_data["name"],
+            "picture": user_data.get("picture"),  # Include picture in token
             "iat": now,
             "exp": expire,
             "type": "access_token"
@@ -309,6 +322,7 @@ class JWTHandler:
                 sub=payload.get("sub"),
                 email=payload.get("email"),
                 name=payload.get("name"),
+                picture=payload.get("picture"),  # Extract picture from token
                 exp=datetime.fromtimestamp(payload.get("exp"), tz=timezone.utc),
                 iat=datetime.fromtimestamp(payload.get("iat"), tz=timezone.utc)
             )
@@ -417,6 +431,7 @@ async def verify_token(current_user: TokenData = Depends(get_current_user)):
             "sub": current_user.sub,
             "email": current_user.email,
             "name": current_user.name,
+            "picture": current_user.picture,  # Include picture in response
             "exp": current_user.exp.isoformat(),
             "iat": current_user.iat.isoformat()
         }
@@ -429,7 +444,8 @@ async def refresh_token(current_user: TokenData = Depends(get_current_user)):
     user_data = {
         "sub": current_user.sub,
         "email": current_user.email,
-        "name": current_user.name
+        "name": current_user.name,
+        "picture": current_user.picture  # Include picture in refresh
     }
     
     new_token = JWTHandler.create_access_token(user_data)
@@ -1170,7 +1186,52 @@ def _convert_curriculum_to_config(curriculum: Dict[str, Any]) -> Dict[str, Any]:
     
     return config
 
+@app.get("/api/notebooks/{notebook_id}/tree")
+async def get_notebook_tree(
+    notebook_id: str,
+    current_user: TokenData = Depends(get_current_user)
+):
+    """Get complete file tree structure for a notebook."""
+    # Verify ownership
+    # Get tree from GCS
+    tree = gcs_storage.get_file_tree(current_user.sub, notebook_id)
+    return {"tree": tree}
+
+@app.get("/api/notebooks/{notebook_id}/files")
+async def list_notebook_files(
+    notebook_id: str,
+    prefix: str = Query("", description="Directory prefix"),
+    current_user: TokenData = Depends(get_current_user)
+):
+    """List files in a notebook directory."""
+    files = gcs_storage.list_files(current_user.sub, notebook_id, prefix)
+    return {"files": files}
+
+@app.get("/api/notebooks/{notebook_id}/file")
+async def get_notebook_file(
+    notebook_id: str,
+    file_path: str = Query(..., description="Relative file path"),
+    current_user: TokenData = Depends(get_current_user)
+):
+    """Get file content."""
+    content = gcs_storage.download_file(current_user.sub, notebook_id, file_path)
+    return {"content": content, "path": file_path}
+
+@app.get("/api/notebooks/{notebook_id}/file/url")
+async def get_file_signed_url(
+    notebook_id: str,
+    file_path: str = Query(..., description="Relative file path"),
+    current_user: TokenData = Depends(get_current_user)
+):
+    """Get signed URL for direct frontend access."""
+    url = gcs_storage.generate_signed_url(
+        current_user.sub, 
+        notebook_id, 
+        file_path
+    )
+    return {"url": url, "expires_in": 3600}
+
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8001)
