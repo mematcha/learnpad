@@ -4,7 +4,6 @@ import * as React from 'react';
 import { Menu, BookOpen, User, Settings, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeSwitcher } from '@/components/ui/theme-switcher';
-import { KeyboardShortcutsHelp } from '@/components/accessibility';
 import { LoginButton } from '@/components/auth/login-button';
 import { useAuth } from '@/components/auth/auth-provider';
 import {
@@ -64,7 +63,6 @@ export function Header({ onMenuToggle, isSidebarOpen, hideSidebar = false }: Hea
           
           <nav className="flex items-center space-x-1">
             <ThemeSwitcher />
-            <KeyboardShortcutsHelp />
             
             <TooltipProvider>
               <Tooltip>

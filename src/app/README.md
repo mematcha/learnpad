@@ -59,7 +59,6 @@ A comprehensive adaptive learning platform built with Next.js, TypeScript, and m
 ### ✅ Accessibility Features
 - **WCAG Compliance**: Proper ARIA labels, focus management, and keyboard navigation
 - **Skip Links**: Quick navigation for screen reader users
-- **Keyboard Shortcuts**: Comprehensive hotkey system with help dialog
 - **Screen Reader Support**: Announcements and semantic markup
 - **High Contrast Mode**: Enhanced visibility theme option
 - **Focus Management**: Proper tab order and focus trapping in modals
@@ -157,7 +156,7 @@ Themes are configured in `lib/themes/theme-config.ts` and can be extended with a
 Components use Class Variance Authority for type-safe variant management. Extend variants in individual component files.
 
 ### Accessibility Settings
-Keyboard shortcuts and accessibility features are configured in `lib/utils/keyboard.ts` and can be customized per user preferences.
+Accessibility features are configured in `lib/utils/keyboard.ts` and can be customized per user preferences.
 
 ## 📱 Responsive Design
 

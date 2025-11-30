@@ -1,11 +1,9 @@
 export { cn } from './cn';
 export {
-  KeyboardManager,
   FocusManager,
   announceToScreenReader,
   prefersReducedMotion,
   createSkipLink,
-  type KeyboardShortcut,
 } from './keyboard';
 
 /**
