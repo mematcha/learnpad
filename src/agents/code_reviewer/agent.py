@@ -8,17 +8,40 @@ import os
 import re
 import sys
 
+# Import standard Google Generative AI SDK for content generation
+_review_model = None
+_use_genai_sdk = False
+_genai_error = None
+
+try:
+    import google.generativeai as genai
+    import os
+    
+    # Configure with API key from environment
+    # The google-generativeai SDK requires an explicit API key
+    api_key = os.getenv("GOOGLE_API_KEY")
+    
+    if api_key:
+        genai.configure(api_key=api_key)
+        _review_model = genai.GenerativeModel("gemini-2.5-flash")
+        _use_genai_sdk = True
+    else:
+        # No API key available - the SDK requires it
+        _genai_error = "GOOGLE_API_KEY environment variable not set. Get your API key from https://makersuite.google.com/app/apikey"
+        _use_genai_sdk = False
+            
+except ImportError as e:
+    _genai_error = f"google-generativeai package not installed: {str(e)}"
+    _use_genai_sdk = False
+except Exception as e:
+    _genai_error = f"Error configuring Google Generative AI: {str(e)}"
+    _use_genai_sdk = False
+
 retry_config = types.HttpRetryOptions(
     attempts=5,  # Maximum retry attempts
     exp_base=7,  # Delay multiplier
     initial_delay=1,
     http_status_codes=[429, 500, 503, 504],  # Retry on these HTTP errors
-)
-
-# Create a shared model instance for code analysis
-_review_model = Gemini(
-    model="gemini-2.5-flash",
-    retry_options=retry_config
 )
 
 INSTRUCTION_TEXT = """
@@ -166,8 +189,74 @@ def review_code(
         prompt = "\n".join(prompt_parts)
         
         # Generate review using the model
-        response = _review_model.generate_content(prompt)
-        return response.text
+        if _use_genai_sdk and _review_model:
+            try:
+                response = _review_model.generate_content(prompt)
+                return response.text
+            except Exception as e:
+                error_msg = str(e)
+                # Provide specific guidance based on error type
+                if "API key" in error_msg.lower() or "authentication" in error_msg.lower():
+                    guidance = """
+**Authentication Error**: The Google Generative AI API requires an API key.
+
+**To fix this:**
+1. Get a Google API key from: https://makersuite.google.com/app/apikey
+2. Set it as an environment variable:
+   ```bash
+   export GOOGLE_API_KEY="your-api-key-here"
+   ```
+3. Or add it to your `.env` file:
+   ```
+   GOOGLE_API_KEY=your-api-key-here
+   ```
+4. Restart your application
+
+**Alternative**: You can use the code_reviewer_agent directly in conversation - it uses the ADK which handles authentication automatically.
+"""
+                else:
+                    guidance = f"Error: {error_msg}\n\nPlease check your API configuration or use the code_reviewer_agent directly in conversation."
+                
+                return f"""Code Review Error
+
+{guidance}
+
+**Code Provided:**
+```{language}
+{code}
+```
+
+**Quick Info:**
+- Language detected: {language}
+- Code length: {len(code)} characters
+- Lines: {len(code.split(chr(10)))} lines"""
+        else:
+            # Fallback: Provide a helpful message
+            error_detail = _genai_error if _genai_error else "API not configured"
+            return f"""Code Review Request Received
+
+I received your code for review, but I'm unable to generate an automated review at the moment.
+
+**Issue**: {error_detail}
+
+**Code Provided:**
+```{language}
+{code}
+```
+
+**To enable automated reviews:**
+1. Install the package: `pip install google-generativeai>=0.8.5`
+2. Get a Google API key: https://makersuite.google.com/app/apikey
+3. Set environment variable: `export GOOGLE_API_KEY="your-key"`
+4. Restart your application
+
+**Alternative - Use Interactive Review:**
+You can use the code_reviewer_agent directly in conversation for interactive code review. The agent itself is working and can provide reviews through conversation.
+
+**Quick Info:**
+- Language detected: {language}
+- Code length: {len(code)} characters
+- Lines: {len(code.split(chr(10)))} lines"""
         
     except Exception as e:
         return f"Error generating code review: {str(e)}. Please try again or provide more specific information."
@@ -231,8 +320,78 @@ def fix_code(
         prompt = "\n".join(prompt_parts)
         
         # Generate fixed code using the model
-        response = _review_model.generate_content(prompt)
-        return response.text
+        if _use_genai_sdk and _review_model:
+            try:
+                response = _review_model.generate_content(prompt)
+                return response.text
+            except Exception as e:
+                error_msg = str(e)
+                # Provide specific guidance based on error type
+                if "API key" in error_msg.lower() or "authentication" in error_msg.lower():
+                    guidance = """
+**Authentication Error**: The Google Generative AI API requires an API key.
+
+**To fix this:**
+1. Get a Google API key from: https://makersuite.google.com/app/apikey
+2. Set it as an environment variable:
+   ```bash
+   export GOOGLE_API_KEY="your-api-key-here"
+   ```
+3. Or add it to your `.env` file:
+   ```
+   GOOGLE_API_KEY=your-api-key-here
+   ```
+4. Restart your application
+
+**Alternative**: You can use the code_reviewer_agent directly in conversation - it uses the ADK which handles authentication automatically.
+"""
+                else:
+                    guidance = f"Error: {error_msg}\n\nPlease check your API configuration or use the code_reviewer_agent directly in conversation."
+                
+                return f"""Code Fix Error
+
+{guidance}
+
+**Code Provided:**
+```{language}
+{code}
+```
+
+**Issues to Address:**
+{issues if issues else 'Not specified'}
+
+**Quick Info:**
+- Language detected: {language}
+- Code length: {len(code)} characters"""
+        else:
+            # Fallback: Provide a helpful message
+            error_detail = _genai_error if _genai_error else "API not configured"
+            return f"""Code Fix Request Received
+
+I received your code to fix, but I'm unable to generate automated fixes at the moment.
+
+**Issue**: {error_detail}
+
+**Code Provided:**
+```{language}
+{code}
+```
+
+**Issues to Address:**
+{issues if issues else 'Not specified'}
+
+**To enable automated fixes:**
+1. Install the package: `pip install google-generativeai>=0.8.5`
+2. Get a Google API key: https://makersuite.google.com/app/apikey
+3. Set environment variable: `export GOOGLE_API_KEY="your-key"`
+4. Restart your application
+
+**Alternative - Use Interactive Fixing:**
+You can use the code_reviewer_agent directly in conversation for interactive code fixing. The agent itself is working and can provide fixes through conversation.
+
+**Quick Info:**
+- Language detected: {language}
+- Code length: {len(code)} characters"""
         
     except Exception as e:
         return f"Error fixing code: {str(e)}. Please try again or provide more specific information."
