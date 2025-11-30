@@ -3,3 +3,5 @@ __pycache__/
 config/
 internal_docs/
 .env
+study_notes_generator
+music_theory
