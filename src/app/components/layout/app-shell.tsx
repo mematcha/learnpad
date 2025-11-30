@@ -45,11 +45,13 @@ export function AppShell({ children, className }: AppShellProps) {
       <div className="flex flex-1 overflow-hidden">
         {!hideSidebar && (
           <aside id="sidebar-navigation" className="flex-shrink-0">
-            <Sidebar 
-              isOpen={isSidebarOpen}
-              isChatOpen={isChatOpen}
-              onOpenChat={handleToggleChat}
-            />
+            <React.Suspense fallback={<div className="w-64 h-full bg-muted animate-pulse" />}>
+              <Sidebar
+                isOpen={isSidebarOpen}
+                isChatOpen={isChatOpen}
+                onOpenChat={handleToggleChat}
+              />
+            </React.Suspense>
           </aside>
         )}
         

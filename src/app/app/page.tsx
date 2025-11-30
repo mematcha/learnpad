@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Modal, Button } from '@/components/ui';
 import { ProjectCreationChat } from '@/components/workspace/project-creation-chat';
@@ -9,25 +10,34 @@ import { useAuthStore } from '@/lib/stores/auth-store';
 
 export default function Home() {
   const { isAuthenticated } = useAuthStore();
+  const router = useRouter();
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [isRecentProjectsModalOpen, setIsRecentProjectsModalOpen] = React.useState(false);
   const [projectConfig, setProjectConfig] = React.useState<{
-    name?: string;
-    agents?: string[];
-    resources?: string[];
+    notebook_id?: string;
+    subject?: string;
+    curriculum_plan_id?: string;
   } | null>(null);
 
   const handleProjectComplete = (config: {
-    name?: string;
-    agents?: string[];
-    resources?: string[];
+    notebook_id?: string;
+    subject?: string;
+    curriculum_plan_id?: string;
   }) => {
     setProjectConfig(config);
+    // Auto-close modal and navigate when notebook is ready
+    if (config.notebook_id) {
+      setIsCreateModalOpen(false);
+      router.push(`/notebook?id=${config.notebook_id}`);
+    }
   };
 
   const handleCreateProject = () => {
-    // TODO: Implement project creation logic with config
-    console.log('Creating project with config:', projectConfig);
+    // The project creation is now handled automatically in handleProjectComplete
+    // This function is kept for backward compatibility but may not be needed
+    if (projectConfig?.notebook_id) {
+      router.push(`/notebook?id=${projectConfig.notebook_id}`);
+    }
     setIsCreateModalOpen(false);
     setProjectConfig(null);
   };
@@ -94,27 +104,19 @@ export default function Home() {
           <Modal
             open={isCreateModalOpen}
             onOpenChange={setIsCreateModalOpen}
-            title="Create New Project"
-            description="Chat with our AI assistant to configure your project"
+            title="Create New Learning Notebook"
+            description="Chat with our AI assistant to create a personalized learning experience"
             size="lg"
             footer={
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsCreateModalOpen(false);
-                    setProjectConfig(null);
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleCreateProject}
-                  disabled={!projectConfig?.name}
-                >
-                  Create Project
-                </Button>
-              </>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsCreateModalOpen(false);
+                  setProjectConfig(null);
+                }}
+              >
+                Cancel
+              </Button>
             }
           >
             <ProjectCreationChat

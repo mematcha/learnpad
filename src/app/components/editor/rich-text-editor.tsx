@@ -45,9 +45,6 @@ export function RichTextEditor({
         },
       }),
       Mathematics.configure({
-        HTMLAttributes: {
-          class: 'math-node',
-        },
         katexOptions: {
           throwOnError: false,
           displayMode: false,

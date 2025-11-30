@@ -37,6 +37,7 @@ export {
 } from './select';
 export { Badge, badgeVariants, type BadgeProps } from './badge';
 export { Modal, ModalContainer } from './modal';
+export { Progress } from './progress';
 export {
   DropdownMenu,
   DropdownMenuTrigger,

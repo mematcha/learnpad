@@ -21,7 +21,7 @@ const apiClient: AxiosInstance = axios.create({
 
 // Request interceptor to add JWT token to requests
 apiClient.interceptors.request.use(
-  (config: AxiosRequestConfig): AxiosRequestConfig => {
+  (config) => {
     const token = useAuthStore.getState().token;
 
     if (token && config.headers) {
@@ -30,18 +30,18 @@ apiClient.interceptors.request.use(
 
     return config;
   },
-  (error: AxiosError) => {
+  (error) => {
     return Promise.reject(error);
   }
 );
 
 // Response interceptor for handling token refresh and auth errors
 apiClient.interceptors.response.use(
-  (response: AxiosResponse) => {
+  (response) => {
     return response;
   },
-  async (error: AxiosError) => {
-    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+  async (error) => {
+    const originalRequest = error.config;
 
     // If error is 401 and we haven't already tried to refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
@@ -132,8 +132,25 @@ export const notebookAPI = {
   /**
    * Create a new notebook
    */
-  createNotebook: async (config: any) => {
-    const response = await apiClient.post('/api/notebooks/generate', config);
+  createNotebook: async (data: {
+    plan_id?: string;
+    config?: any;
+    user_id: string;
+    options?: {
+      include_progress_tracking?: boolean;
+      include_cross_references?: boolean;
+      output_format?: string;
+    };
+  }) => {
+    const response = await apiClient.post('/api/notebooks/generate', data);
+    return response.data;
+  },
+
+  /**
+   * Get notebook status/progress
+   */
+  getNotebookStatus: async (notebookId: string) => {
+    const response = await apiClient.get(`/api/notebooks/${notebookId}`);
     return response.data;
   },
 
