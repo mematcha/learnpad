@@ -3,6 +3,9 @@ from google.adk.models.google_llm import Gemini
 from google.genai import types
 from typing import Optional
 
+from vertexai.agent_engines import AdkApp
+from google.adk.sessions import VertexAiSessionService
+
 retry_config = types.HttpRetryOptions(
     attempts=5,  # Maximum retry attempts
     exp_base=7,  # Delay multiplier
@@ -444,6 +447,12 @@ I received your exercise generation request, but I'm unable to generate automate
     except Exception as e:
         return f"Error creating exercises: {str(e)}. Please try again or provide more specific requirements."
 
+def session_service_builder():
+    import os
+    return VertexAiSessionService(
+        project=os.getenv("GOOGLE_CLOUD_PROJECT"),
+        location=os.getenv("GOOGLE_CLOUD_LOCATION"),
+    )
 
 root_agent = Agent(
     model=Gemini(
