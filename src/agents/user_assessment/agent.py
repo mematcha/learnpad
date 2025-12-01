@@ -1,17 +1,18 @@
-from google.adk.agents.llm_agent import Agent
-from google.adk.models.google_llm import Gemini
-from google.genai import types
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 import json
 import re
+from google.genai import types
 
 retry_config = types.HttpRetryOptions(
-    attempts=5,  # Maximum retry attempts
-    exp_base=7,  # Delay multiplier
+    attempts=5,
+    exp_base=7,
     initial_delay=1,
-    http_status_codes=[429, 500, 503, 504],  # Retry on these HTTP errors
+    http_status_codes=[429, 500, 503, 504],
 )
+
+# Note: When using ADK Agents, the SDK is initialized by the ADK framework
+# No need to manually initialize google.generativeai here
 
 INSTRUCTION_TEXT = """
 You are a User Assessment Agent responsible for analyzing user requirements, goals, and learning preferences before notebook creation.
@@ -667,21 +668,37 @@ def generate_structured_profile(
         return f"Error generating JSON: {str(e)}"
 
 
-root_agent = Agent(
-    model=Gemini(
-        model="gemini-2.5-flash",
-        retry_options=retry_config
-    ),
-    name="user_assessment_agent",
-    description="Analyzes user requirements, goals, and learning preferences before notebook creation",
-    instruction=INSTRUCTION_TEXT,
-    tools=[
-        assess_experience_level,
-        analyze_learning_style,
-        assess_control_preferences,
-        identify_knowledge_gaps,
-        assess_pacing_and_structure,
-        create_user_profile,
-        generate_structured_profile,
-    ],
-)
+# Create ADK Agent with all assessment tools
+try:
+    from google.adk.agents.llm_agent import Agent
+    from google.adk.models.google_llm import Gemini
+    
+    import os
+    
+    root_agent = Agent(
+        model=Gemini(
+            model="gemini-2.5-flash",
+            retry_options=retry_config,
+            # Configure to use Vertex AI (not API key)
+            vertexai=True,
+            project=os.getenv("GOOGLE_CLOUD_PROJECT"),
+            location=os.getenv("GOOGLE_CLOUD_LOCATION")
+        ),
+        name="user_assessment_agent",
+        description="Specialist agent for assessing user knowledge, learning preferences, and creating comprehensive learner profiles",
+        instruction=INSTRUCTION_TEXT,
+        tools=[
+            assess_experience_level,
+            analyze_learning_style,
+            assess_control_preferences,
+            identify_knowledge_gaps,
+            assess_pacing_and_structure,
+            create_user_profile,
+            generate_structured_profile,
+        ],
+    )
+except ImportError as e:
+    # If ADK is not available, the agent cannot function
+    print(f"ERROR: Google ADK is required for user_assessment agent: {e}")
+    print("Install with: pip install google-adk google-cloud-aiplatform google-genai")
+    root_agent = None
