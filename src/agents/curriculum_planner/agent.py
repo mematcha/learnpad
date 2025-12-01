@@ -2,6 +2,21 @@ from typing import Dict, Any, List, Optional
 import json
 from google.genai import types
 
+# Import shared memory functions with error handling
+try:
+    from agents.shared_memory import get_user_profile, get_user_profile_json
+except ImportError:
+    try:
+        from ..shared_memory import get_user_profile, get_user_profile_json
+    except ImportError as e:
+        print(f"Warning: Could not import shared_memory functions: {e}")
+        # Create fallback functions
+        def get_user_profile(user_id: str, notebook_id: str) -> Dict[str, Any]:
+            return {"status": "error", "message": "Shared memory not available", "profile": None}
+        
+        def get_user_profile_json(user_id: str, notebook_id: str) -> str:
+            return '{"status": "error", "message": "Shared memory not available"}'
+
 retry_config = types.HttpRetryOptions(
     attempts=5,
     exp_base=7,
@@ -54,11 +69,25 @@ Your primary responsibilities are:
 
 When designing a curriculum:
 - Always consider the user's assessment profile (experience level, learning style, goals, time constraints)
+- **Before starting, retrieve the user profile from memory using get_user_profile or get_user_profile_json**
 - Create structured, actionable curriculum plans that can be implemented
 - Use the curriculum design tools to generate comprehensive plans
 - Ensure the curriculum is personalized to the user's needs
 - Balance comprehensiveness with feasibility given time constraints
 - Design for progressive skill building and knowledge acquisition
+
+**CRITICAL: When you start curriculum planning, you MUST:**
+1. First retrieve the user profile from memory using get_user_profile with the user_id and notebook_id
+2. Use the retrieved profile data when calling generate_complete_curriculum
+3. Present the curriculum plan to the user in a clear, organized format
+4. **Immediately call the content_generator_agent** to begin generating content for the 
+   first topic/section in the curriculum. The content_generator_agent is available as a tool - 
+   use it to seamlessly transition from curriculum planning to content generation.
+5. Provide the content_generator with:
+   - The topic/subject to generate content for
+   - The difficulty level from the user profile
+   - The learning style preferences
+   - Any specific context about the curriculum structure
 
 Always aim to create a curriculum that is:
 - Well-structured and logically sequenced
@@ -390,11 +419,40 @@ def generate_complete_curriculum(
 
 
 # Create ADK Agent with all curriculum planning tools
+root_agent = None
 try:
     from google.adk.agents.llm_agent import Agent
     from google.adk.models.google_llm import Gemini
+    from google.adk.tools import AgentTool
     
     import os
+    
+    # Import content_generator agent to use as a tool
+    content_generator_agent = None
+    try:
+        from agents.content_generator.agent import root_agent as content_generator_agent
+    except (ImportError, AttributeError):
+        try:
+            from ..content_generator.agent import root_agent as content_generator_agent
+        except (ImportError, AttributeError) as e:
+            print(f"Warning: Could not import content_generator_agent: {e}")
+            pass
+    
+    # Build tools list
+    curriculum_tools = [
+        create_learning_path,
+        design_notebook_structure,
+        determine_content_depth,
+        plan_assessment_points,
+        design_practice_progression,
+        generate_complete_curriculum,
+        get_user_profile,  # Add memory retrieval tools
+        get_user_profile_json,
+    ]
+    
+    # Add content_generator as a tool if available
+    if content_generator_agent is not None:
+        curriculum_tools.append(AgentTool(agent=content_generator_agent))
     
     root_agent = Agent(
         model=Gemini(
@@ -408,18 +466,17 @@ try:
         name="curriculum_planner_agent",
         description="Specialist agent for designing comprehensive learning curricula, notebook structures, and learning paths based on user assessment data",
         instruction=INSTRUCTION_TEXT,
-        tools=[
-            create_learning_path,
-            design_notebook_structure,
-            determine_content_depth,
-            plan_assessment_points,
-            design_practice_progression,
-            generate_complete_curriculum,
-        ],
+        tools=curriculum_tools,
     )
 except ImportError as e:
     # Fallback: Create a simple agent class if ADK is not available
     # If ADK is not available, the agent cannot function
     print(f"ERROR: Google ADK is required for curriculum_planner agent: {e}")
     print("Install with: pip install google-adk google-cloud-aiplatform google-genai")
+    root_agent = None
+except Exception as e:
+    # Catch any other exceptions during agent creation
+    print(f"ERROR: Failed to create curriculum_planner agent: {e}")
+    import traceback
+    traceback.print_exc()
     root_agent = None

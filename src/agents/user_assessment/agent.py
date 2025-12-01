@@ -4,6 +4,18 @@ import json
 import re
 from google.genai import types
 
+# Import shared memory with error handling
+try:
+    from agents.shared_memory import store_user_profile
+except ImportError:
+    # Fallback for relative import if absolute fails
+    try:
+        from ..shared_memory import store_user_profile
+    except ImportError:
+        # Final fallback - create a dummy function
+        def store_user_profile(user_id: str, notebook_id: str, user_profile: Dict[str, Any]) -> Dict[str, Any]:
+            return {"status": "error", "message": "Shared memory not available"}
+
 retry_config = types.HttpRetryOptions(
     attempts=5,
     exp_base=7,
@@ -16,6 +28,18 @@ retry_config = types.HttpRetryOptions(
 
 INSTRUCTION_TEXT = """
 You are a User Assessment Agent responsible for analyzing user requirements, goals, and learning preferences before notebook creation.
+
+**IMPORTANT: When starting a new conversation or when a user first interacts with you, you MUST begin with this greeting message:**
+
+"Hello! I'm here to help you create a personalized learning experience. To get started, I'd like to understand a bit about you and your learning goals. Let's begin with a few questions:
+
+1. What subject or topic would you like to learn about?
+2. What's your current experience level with this subject? (beginner, intermediate, or advanced)
+3. What are your main learning goals? (e.g., building a project, mastering fundamentals, preparing for an exam)
+
+Feel free to share as much or as little detail as you'd like, and I'll guide you through the rest!"
+
+After delivering this greeting, wait for the user's response before proceeding with the assessment.
 
 Your primary responsibilities are:
 
@@ -61,8 +85,14 @@ When conducting an assessment:
 **CRITICAL: When you complete an assessment, you MUST:**
 1. Analyze the conversation and determine all assessment values
 2. Call the assessment tools with your analysis (as structured text)
-3. Call create_user_profile to generate the complete profile
-4. Present the profile in a clear, organized format
+3. **Obtain the user_id and notebook_id from the user or conversation context** - these are required for profile creation
+4. Call create_user_profile with user_id, notebook_id, and all assessment results to generate the complete profile
+5. **Present the profile in a clear, organized format, making sure to prominently display the user_id and notebook_id** so the user knows these identifiers for future reference
+6. **Store the user profile in memory using store_user_profile** - call it like this:
+   store_user_profile(user_id="<the_user_id>", notebook_id="<the_notebook_id>", user_profile=<the_profile_from_create_user_profile>)
+   Make sure to pass the user_id and notebook_id as separate string parameters, and the full profile dictionary as the user_profile parameter
+7. After storing the profile, inform the user that their profile has been saved with their user_id and notebook_id, 
+   and is ready for curriculum planning
 
 Always aim to create a complete user profile that will help personalize their learning experience.
 """
@@ -583,6 +613,7 @@ def assess_pacing_and_structure(
 
 def create_user_profile(
     user_id: str,
+    notebook_id: str,
     experience_assessment: Dict[str, Any],
     learning_style: Dict[str, Any],
     control_preferences: Dict[str, Any],
@@ -595,6 +626,7 @@ def create_user_profile(
     
     Args:
         user_id: Unique identifier for the user
+        notebook_id: Unique identifier for the notebook
         experience_assessment: Result from assess_experience_level
         learning_style: Result from analyze_learning_style
         control_preferences: Result from assess_control_preferences
@@ -603,7 +635,7 @@ def create_user_profile(
         project_details: Optional project information
     
     Returns:
-        Complete user profile dictionary
+        Complete user profile dictionary with user_id and notebook_id included
     """
     timestamp = datetime.now(timezone.utc).isoformat()
     
@@ -619,6 +651,7 @@ def create_user_profile(
     profile = {
         "status": "success",
         "user_id": user_id,
+        "notebook_id": notebook_id,
         "profile": {
             "experience": experience_assessment,
             "learning_style": learning_style,
@@ -669,11 +702,39 @@ def generate_structured_profile(
 
 
 # Create ADK Agent with all assessment tools
+root_agent = None
 try:
     from google.adk.agents.llm_agent import Agent
     from google.adk.models.google_llm import Gemini
+    from google.adk.tools import AgentTool
     
     import os
+    
+    # Import curriculum_planner agent to use as a tool
+    curriculum_planner_agent = None
+    try:
+        from agents.curriculum_planner.agent import root_agent as curriculum_planner_agent
+    except (ImportError, AttributeError):
+        try:
+            from ..curriculum_planner.agent import root_agent as curriculum_planner_agent
+        except (ImportError, AttributeError):
+            pass
+    
+    # Build tools list
+    assessment_tools = [
+        assess_experience_level,
+        analyze_learning_style,
+        assess_control_preferences,
+        identify_knowledge_gaps,
+        assess_pacing_and_structure,
+        create_user_profile,
+        generate_structured_profile,
+        store_user_profile,  # Add memory storage tool
+    ]
+    
+    # Add curriculum_planner as a tool if available
+    if curriculum_planner_agent is not None:
+        assessment_tools.append(AgentTool(agent=curriculum_planner_agent))
     
     root_agent = Agent(
         model=Gemini(
@@ -687,18 +748,16 @@ try:
         name="user_assessment_agent",
         description="Specialist agent for assessing user knowledge, learning preferences, and creating comprehensive learner profiles",
         instruction=INSTRUCTION_TEXT,
-        tools=[
-            assess_experience_level,
-            analyze_learning_style,
-            assess_control_preferences,
-            identify_knowledge_gaps,
-            assess_pacing_and_structure,
-            create_user_profile,
-            generate_structured_profile,
-        ],
+        tools=assessment_tools,
     )
 except ImportError as e:
     # If ADK is not available, the agent cannot function
     print(f"ERROR: Google ADK is required for user_assessment agent: {e}")
     print("Install with: pip install google-adk google-cloud-aiplatform google-genai")
+    root_agent = None
+except Exception as e:
+    # Catch any other exceptions during agent creation
+    print(f"ERROR: Failed to create user_assessment agent: {e}")
+    import traceback
+    traceback.print_exc()
     root_agent = None
