@@ -8,3 +8,4 @@ music_theory
 learnpad-backend-key.json
 cors.json
 application_default_credentials.json
+src/agents/deployment_metadata.json

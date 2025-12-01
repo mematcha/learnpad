@@ -259,14 +259,24 @@ export function ProjectCreationChat({ onComplete, className }: ProjectCreationCh
         user_id: user.sub
       });
 
+      // Add BOTH the confirmed user message and AI response
+      // This ensures the user message persists even if there were timing issues
+      const confirmedUserMessage: Message = {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        content: response.user_message, // Use backend's echo
+        timestamp: new Date(),
+      };
+
       const aiMessage: Message = {
-        id: Date.now().toString(),
+        id: `ai-${Date.now()}`,
         role: 'assistant',
         content: response.response,
         timestamp: new Date(),
       };
 
-      setMessages(prev => [...prev, aiMessage]);
+      // Add both messages together to avoid any race conditions
+      setMessages(prev => [...prev, confirmedUserMessage, aiMessage]);
 
       // Check if assessment is complete
       if (response.profile_complete) {
@@ -499,27 +509,22 @@ export function ProjectCreationChat({ onComplete, className }: ProjectCreationCh
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading || conversationStep === 'complete' || conversationStep === 'curriculum' || conversationStep === 'generating' || conversationStep === 'assessment_complete') return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: inputValue.trim(),
-      timestamp: new Date(),
-    };
+    // Check if this is the first user message BEFORE adding to state
+    const isFirstUserMessage = messages.filter(m => m.role === 'user').length === 0;
+    const messageContent = inputValue.trim();
 
-    setMessages(prev => [...prev, userMessage]);
+    // Don't add user message here - let the backend response add it
+    // This prevents duplicate messages and ensures the message persists
     setInputValue('');
     setIsLoading(true);
 
     try {
-      // Check if this is the first user message in the assessment
-      const isFirstUserMessage = messages.filter(m => m.role === 'user').length === 1;
-
       if (isFirstUserMessage && conversationStep === 'assessment') {
         // For the first message, include context about what we're doing
-        const contextualMessage = `${userMessage.content}\n\nI want to create a personalized learning notebook. Please assess my learning preferences and help me create a curriculum plan.`;
+        const contextualMessage = `${messageContent}\n\nI want to create a personalized learning notebook. Please assess my learning preferences and help me create a curriculum plan.`;
         await handleSendAssessmentMessage(contextualMessage);
       } else {
-        await handleSendAssessmentMessage(userMessage.content);
+        await handleSendAssessmentMessage(messageContent);
       }
     } catch (err) {
       console.error('Error in handleSendMessage:', err);

@@ -1,6 +1,31 @@
-# learnpad
+# LearnPad
 
-Learnpad is an L4-level adaptive learning system that delivers fully personalized, notebook-based educational content. It blends notebooks, interactive sandboxes and agentic teaching loops that evolve as the user learns.
+LearnPad is an L4-level adaptive learning system that delivers fully personalized, notebook-based educational content. It blends notebooks, interactive sandboxes and agentic teaching loops that evolve as the user learns.
+
+## Kaggle AI Agents Course - Capstone Project
+
+This project demonstrates key concepts from the Kaggle AI Agents course:
+
+1. **Agent Architecture** ✓
+   - Multi-agent system with specialized agents (curriculum planner, content generator, notebook orchestrator)
+   - Loop agent pattern for iterative notebook generation
+   - Sub-agent coordination for complex workflows
+
+2. **Tools** ✓
+   - Custom tools for curriculum generation, content creation, and GCS storage
+   - Integration with Google Cloud Storage for file persistence
+   - Built-in tools (Gemini models for content generation)
+
+3. **Sessions & Memory** ✓
+   - Session management for user assessment and conversation tracking
+   - State management for notebook generation progress
+   - Context compaction for efficient agent interactions
+
+**Track:** Agents for Good (Education)
+
+**Problem:** Creating high-quality, personalized learning materials is time-intensive and often fails to adapt to individual learning styles.
+
+**Solution:** LearnPad uses AI agents to automatically generate complete, structured study notebooks tailored to each user's experience level, learning goals, and preferences.
 
 ## Architecture
 
@@ -59,8 +84,50 @@ LearnPad uses a microservices architecture with AI agents deployed to Vertex AI 
 
 ## Quick Start
 
-### Prerequisites
+**Two deployment options:**
 
+### Option A: Local Development (Recommended for Testing)
+
+Complete local setup without agent deployment. Perfect for testing the full flow: frontend → backend → GCS.
+
+**Prerequisites:**
+- Python 3.9+
+- Node.js 18+
+- Google Cloud SDK (`gcloud`)
+- GCS bucket created
+
+**Setup Instructions:** See **[LOCAL_TEST_WORKFLOW.md](LOCAL_TEST_WORKFLOW.md)** for complete step-by-step guide.
+
+**Quick summary:**
+```bash
+# 1. Authenticate with GCS
+gcloud auth application-default login
+
+# 2. Configure backend (.env)
+cd src/api
+cp env.template .env
+# Edit .env with your GCS bucket and project ID
+
+# 3. Configure frontend (.env.local)
+cd src/app
+cp env.template .env.local
+# Edit .env.local with your Google OAuth Client ID
+
+# 4. Start services
+# Terminal 1: Backend
+cd src/api && uvicorn server:app --port 8001 --reload
+
+# Terminal 2: Frontend
+cd src/app && npm run dev
+```
+
+Visit `http://localhost:3000` and generate a notebook!
+
+### Option B: Production Deployment with Vertex AI Agents
+
+Deploy agents to Vertex AI Agent Engine for production-grade AI content generation.
+
+**Prerequisites:**
 - Python 3.11+
 - Node.js 18+
 - Google Cloud Project with Vertex AI enabled
@@ -125,12 +192,22 @@ Visit `http://localhost:3000` to use Learnpad.
 
 ## Documentation
 
-- **[AGENT_DEPLOYMENT.md](AGENT_DEPLOYMENT.md)** - Complete agent deployment guide
+### Getting Started
+- **[LOCAL_TEST_WORKFLOW.md](LOCAL_TEST_WORKFLOW.md)** - Complete local setup and testing guide ⭐
+- **[LOCAL_SETUP.md](LOCAL_SETUP.md)** - Architecture and endpoint documentation
+- **[GCS_AUTH_SETUP.md](GCS_AUTH_SETUP.md)** - GCS authentication and configuration
+
+### Deployment & Integration
+- **[AGENT_DEPLOYMENT.md](AGENT_DEPLOYMENT.md)** - Vertex AI agent deployment guide
 - **[src/api/AGENT_INTEGRATION.md](src/api/AGENT_INTEGRATION.md)** - API integration patterns
+- **[src/api/QUICK_START.md](src/api/QUICK_START.md)** - API quick start
+
+### Development
 - **[internal_docs/](internal_docs/)** - Architecture and development docs
   - [AGENT_SETUP.md](internal_docs/AGENT_SETUP.md) - Agent development guide
   - [NOTEBOOK_API_DESIGN.md](internal_docs/NOTEBOOK_API_DESIGN.md) - API design
   - [notebooks/](internal_docs/notebooks/) - Tutorial notebooks on agent architectures
+  - [capstone_guidelines.md](internal_docs/capstone_guidelines.md) - Capstone rubric and requirements
 
 ## Project Structure
 
@@ -161,21 +238,56 @@ learnpad/
 └── README.md                       # This file
 ```
 
+## Key Features
+
+### Adaptive Learning Path
+- AI-powered user assessment to identify experience level and learning preferences
+- Dynamic curriculum generation based on user profile
+- Iterative content generation that builds progressively on previous topics
+
+### Notebook Generation
+- Complete study notebooks with structured markdown files
+- Topic-based organization with subtopics and cross-references
+- Progress tracking and learning objectives
+- Automatic upload to Google Cloud Storage
+
+### Multi-Agent Architecture
+- **Curriculum Planner**: Designs learning paths and content structure
+- **Content Generator**: Creates educational content for each topic
+- **Notebook Loop Agent**: Orchestrates the entire generation process
+- **User Assessment Agent**: Conducts conversational assessment of user needs
+
+### Storage & Retrieval
+- GCS-first architecture: files uploaded directly during generation
+- RESTful API for file tree navigation and content retrieval
+- Signed URLs for efficient frontend access
+- Hierarchical folder structure: `users/{user_id}/notebooks/{notebook_id}/`
+
 ## Development
+
+### Local Testing Without Agents
+
+The backend is designed to work **without deployed agents** for local testing. It will generate notebook structure with placeholder content, allowing you to test:
+- Complete API flow (auth → generation → file storage)
+- GCS upload integration
+- Frontend UI for notebook display and navigation
+- File tree rendering
+
+See **[LOCAL_TEST_WORKFLOW.md](LOCAL_TEST_WORKFLOW.md)** for detailed testing instructions.
 
 ### Running Tests
 
 ```bash
-# Agent tests
-python -m pytest tests/agents/
-
-# API tests
+# Backend API tests
 cd src/api
-python -m pytest tests/
+python -m pytest tests/ # (if tests exist)
 
 # Frontend tests
 cd src/app
 npm test
+
+# Manual end-to-end test
+# Follow LOCAL_TEST_WORKFLOW.md
 ```
 
 ### Local Agent Development
@@ -183,7 +295,7 @@ npm test
 For local agent development without Vertex AI:
 
 ```python
-# Agents can run locally using google.generativeai SDK
+# Agents can run locally using google-genai SDK
 # Set GOOGLE_API_KEY in .env
 
 from agents.content_generator.agent import generate_content

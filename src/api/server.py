@@ -1,11 +1,38 @@
 import os
+
+# ============================================================================
+# CRITICAL: Load .env and set GCP environment variables FIRST
+# This must happen before ANY imports that might load agents
+# ============================================================================
+from pathlib import Path
+from dotenv import load_dotenv
+
+from api.adk_client import ADKClient
+
+# Load .env file
+env_path = Path(__file__).parent / ".env"
+load_dotenv(env_path)
+
+# Set GCP environment variables immediately (before any agent imports)
+# This ensures Gemini models initialize with Vertex AI configuration
+if os.getenv("GOOGLE_CLOUD_PROJECT"):
+    os.environ["GOOGLE_CLOUD_PROJECT"] = os.getenv("GOOGLE_CLOUD_PROJECT")
+if os.getenv("GOOGLE_CLOUD_LOCATION"):
+    os.environ["GOOGLE_CLOUD_LOCATION"] = os.getenv("GOOGLE_CLOUD_LOCATION")
+
+print(f"🔧 Pre-initialization environment:")
+print(f"   GOOGLE_CLOUD_PROJECT: {os.getenv('GOOGLE_CLOUD_PROJECT')}")
+print(f"   GOOGLE_CLOUD_LOCATION: {os.getenv('GOOGLE_CLOUD_LOCATION')}")
+
+# ============================================================================
+# Now safe to import other modules
+# ============================================================================
 import jwt
 import uuid
 import json
 import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, List
-from pathlib import Path
 from fastapi import FastAPI, HTTPException, Depends, status, Request, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,6 +41,8 @@ from pydantic_settings import BaseSettings
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 import requests
+import vertexai
+from vertexai import agent_engines
 
 # Add src to path for storage imports
 import sys
@@ -26,98 +55,13 @@ if str(src_path) not in sys.path:
 # Import storage
 from storage import gcs_storage
 
-# Vertex AI Agent Engine Configuration
-# Agents are deployed to Vertex AI and accessed via HTTP API
-print("🔗 Configuring Vertex AI Agent Engine endpoints...")
+"""
+NOTE: All Vertex AI Agent Engine / ADK-based integration has been intentionally
+disabled in this server to simplify the backend and avoid local agent imports.
 
-# Agent endpoint URLs (set these after deploying to Vertex AI)
-VERTEX_AI_USER_ASSESSMENT_ENDPOINT = os.getenv("VERTEX_AI_USER_ASSESSMENT_AGENT_ENDPOINT")
-VERTEX_AI_CURRICULUM_PLANNER_ENDPOINT = os.getenv("VERTEX_AI_CURRICULUM_PLANNER_AGENT_ENDPOINT")
-VERTEX_AI_CONTENT_GENERATOR_ENDPOINT = os.getenv("VERTEX_AI_CONTENT_GENERATOR_AGENT_ENDPOINT")
-VERTEX_AI_NOTEBOOK_LOOP_ENDPOINT = os.getenv("VERTEX_AI_NOTEBOOK_LOOP_AGENT_ENDPOINT")
-
-# Authentication for Vertex AI
-import google.auth
-import google.auth.transport.requests
-
-def get_vertex_ai_auth_token():
-    """Get authentication token for Vertex AI API calls."""
-    try:
-        credentials, project = google.auth.default()
-        auth_req = google.auth.transport.requests.Request()
-        credentials.refresh(auth_req)
-        return credentials.token
-    except Exception as e:
-        print(f"⚠️ Failed to get Vertex AI auth token: {e}")
-        return None
-
-# HTTP client for calling Vertex AI agents
-async def call_vertex_ai_agent(endpoint: str, payload: Dict[str, Any], timeout: int = 120) -> str:
-    """
-    Call a deployed Vertex AI agent.
-    
-    Args:
-        endpoint: Full URL of the agent endpoint
-        payload: Request payload containing the user input/prompt
-        timeout: Request timeout in seconds
-        
-    Returns:
-        Agent response as string
-    """
-    if not endpoint:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Agent endpoint not configured. Please deploy agents and set endpoint URLs."
-        )
-
-try:
-        # Get authentication token
-        auth_token = get_vertex_ai_auth_token()
-        if not auth_token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Failed to authenticate with Vertex AI"
-            )
-        
-        headers = {
-            "Authorization": f"Bearer {auth_token}",
-            "Content-Type": "application/json"
-        }
-        
-        # Make async HTTP request to Vertex AI agent
-        import httpx
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.post(endpoint, json=payload, headers=headers)
-            response.raise_for_status()
-            result = response.json()
-            
-            # Extract response text from Vertex AI response format
-            # Adjust this based on actual Vertex AI Agent Engine response format
-            if isinstance(result, dict):
-                return result.get("response", result.get("text", str(result)))
-            return str(result)
-            
-    except httpx.HTTPStatusError as e:
-        print(f"❌ Vertex AI agent HTTP error: {e.response.status_code} - {e.response.text}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Agent request failed: {e.response.status_code}"
-        )
-    except Exception as e:
-        print(f"❌ Error calling Vertex AI agent: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Agent communication error: {str(e)}"
-        )
-
-print("✅ Vertex AI Agent Engine client configured")
-
-# Import notebook generator
-NotebookGenerator = None
-try:
-    from agents.study_notes_generator.notebook_generator import NotebookGenerator
-except ImportError as e:
-    print(f"Warning: Could not import NotebookGenerator: {e}")
+If you want to re-enable deployed agents later, you can wire them up behind
+new helper functions without importing any `agents.*` modules here.
+"""
 
 # Custom notebook generator that uploads to GCS
 class NotebookGeneratorWithGCS:
@@ -148,7 +92,7 @@ class NotebookGeneratorWithGCS:
 
     def _load_templates(self) -> Dict[str, str]:
         """Load markdown templates."""
-        templates_dir = Path(__file__).parent.parent / "agents" / "study_notes_generator" / "templates"
+        # Note: study_notes_generator has been removed, using inline templates
         templates = {}
 
         # Default fallback templates
@@ -247,28 +191,17 @@ class NotebookGeneratorWithGCS:
 *Generated by Study Notes Generator*
 """
 
-        # Try to load custom templates from files if they exist
-        template_files = {
-            'note': 'note_template.md',
-            'index': 'index_template.md',
-            'progress': 'progress_template.md'
-        }
-
-        for template_name, filename in template_files.items():
-            template_file = templates_dir / filename
-            if template_file.exists():
-                try:
-                    with open(template_file, 'r', encoding='utf-8') as f:
-                        templates[template_name] = f.read()
-                    print(f"✅ Loaded custom {template_name} template")
-                except Exception as e:
-                    print(f"⚠️  Failed to load {template_name} template: {e}")
+        # Custom template loading removed - using inline defaults above
+        # If you need custom templates, add them directly to the templates dict
 
         return templates
 
     async def generate_notebook(self):
         """Override to use loop agent pattern for iterative content generation."""
-        print(f"🎯 Generating study notebook for: {self.config.subject}")
+        config_dict = self.config if isinstance(self.config, dict) else {}
+        subject = config_dict.get('subject', 'Unknown Subject')
+        
+        print(f"🎯 Generating study notebook for: {subject}")
         print(f"📁 Output directory: {self.output_dir}")
         print(f"☁️ GCS notebook ID: {self.notebook_id}")
 
@@ -289,7 +222,7 @@ class NotebookGeneratorWithGCS:
         await self._generate_files_with_loop_agent_and_upload(folder_structure, research_content)
 
         # Step 5: Create progress tracking
-        if self.config.include_progress_tracking:
+        if config_dict.get('include_progress_tracking', True):
             print("📊 Creating progress tracking...")
             await self._create_progress_tracking_and_upload(research_content)
 
@@ -421,15 +354,18 @@ class NotebookGeneratorWithGCS:
         first_topic = research_content["topics"][0] if research_content["topics"] else {"name": "topic1"}
         second_topic = research_content["topics"][1] if len(research_content["topics"]) > 1 else {"name": "topic2"}
 
+        config_dict = self.config if isinstance(self.config, dict) else {}
+        subject = config_dict.get('subject', 'Unknown Subject')
+
         index_content = self.templates["index"].format(
-            title=f"{self.config.subject} - Study Guide",
-            subject=self.config.subject,
-            description=self.config.description,
-            difficulty=self.config.difficulty,
+            title=f"{subject} - Study Guide",
+            subject=subject,
+            description=config_dict.get('description', ''),
+            difficulty=config_dict.get('difficulty', 'intermediate'),
             date=datetime.now().strftime("%Y-%m-%d"),
             learning_goals="Master all concepts and complete practical exercises",
             estimated_total_time=total_time,
-            prerequisites=", ".join(self.config.prerequisites) if self.config.prerequisites else "None required",
+            prerequisites=", ".join(config_dict.get('prerequisites', [])) if config_dict.get('prerequisites') else "None required",
             learning_path=learning_path,
             topics_overview=topics_overview,
             progress_tracking=progress_tracking,
@@ -515,9 +451,12 @@ class NotebookGeneratorWithGCS:
             navigation = "- [← Back to Main](../README.md)"
 
         # Generate file content using template with parsed sections
+        config_dict = self.config if isinstance(self.config, dict) else {}
+        subject = config_dict.get('subject', 'Unknown Subject')
+        
         file_content = self.templates["note"].format(
             title=topic["name"],
-            subject=self.config.subject,
+            subject=subject,
             topic=topic["name"],
             difficulty=topic.get("difficulty", "intermediate"),
             date=datetime.now().strftime("%Y-%m-%d"),
@@ -531,7 +470,7 @@ class NotebookGeneratorWithGCS:
             important_notes=content_sections.get("important_notes", "Important notes will be added here..."),
             examples=content_sections.get("examples", "Examples will be provided here..."),
             practical_applications=content_sections.get("practical_applications", "Practical applications will be discussed here..."),
-            code_examples=content_sections.get("code_examples", "Code examples will be provided here..." if "python" in self.config.subject.lower() else "Examples will be provided here..."),
+            code_examples=content_sections.get("code_examples", "Code examples will be provided here..." if "python" in subject.lower() else "Examples will be provided here..."),
             exercises=content_sections.get("exercises", "Practice exercises will be added here..."),
             beginner_exercises=content_sections.get("beginner_exercises", "Beginner exercises will be listed here..."),
             intermediate_exercises=content_sections.get("intermediate_exercises", "Intermediate exercises will be listed here..."),
@@ -569,8 +508,11 @@ class NotebookGeneratorWithGCS:
 
             topic_progress += "\n"
 
+        config_dict = self.config if isinstance(self.config, dict) else {}
+        subject = config_dict.get('subject', 'Unknown Subject')
+
         progress_content = self.templates["progress"].format(
-            subject=self.config.subject,
+            subject=subject,
             start_date=datetime.now().strftime("%Y-%m-%d"),
             update_date=datetime.now().strftime("%Y-%m-%d"),
             target_completion=(datetime.now().replace(day=1, month=datetime.now().month + 1) - datetime.now().replace(day=1)).days,
@@ -605,6 +547,60 @@ class NotebookGeneratorWithGCS:
         )
 
         return progress_content
+
+    async def _analyze_content(self) -> Dict[str, Any]:
+        """Analyze and structure the notebook content based on config."""
+        # Extract topics from config
+        config_dict = self.config if isinstance(self.config, dict) else json.loads(json.dumps(self.config))
+        
+        subject = config_dict.get("subject", "Unknown Subject")
+        topics_list = config_dict.get("topics", [])
+        
+        # If no topics provided, create a default structure
+        if not topics_list:
+            topics_list = [{
+                "name": "Introduction",
+                "description": f"Introduction to {subject}",
+                "difficulty": config_dict.get("difficulty", "beginner"),
+                "estimated_time": "2 hours",
+                "key_concepts": [],
+                "learning_objectives": [],
+                "prerequisites": [],
+                "subtopics": []
+            }]
+        
+        content_structure = {
+            "subject": subject,
+            "difficulty": config_dict.get("difficulty", "intermediate"),
+            "topics": topics_list
+        }
+        
+        return content_structure
+
+    async def _create_folder_structure(self, research_content: Dict[str, Any]) -> Dict[str, Any]:
+        """Create the folder structure for the notebook."""
+        folder_structure = {
+            "root": self.output_dir,
+            "topics": []
+        }
+        
+        for topic in research_content["topics"]:
+            topic_folder = {
+                "name": topic["name"],
+                "path": self.output_dir / topic["name"].lower().replace(" ", "_"),
+                "subtopics": []
+            }
+            
+            for subtopic in topic.get("subtopics", []):
+                subtopic_folder = {
+                    "name": subtopic["name"],
+                    "path": topic_folder["path"] / subtopic["name"].lower().replace(" ", "_")
+                }
+                topic_folder["subtopics"].append(subtopic_folder)
+            
+            folder_structure["topics"].append(topic_folder)
+        
+        return folder_structure
 
     async def _generate_research_content_with_loop_agent(self, content_structure: Dict[str, Any]) -> Dict[str, Any]:
         """Generate detailed research content for each topic using loop agent pattern."""
@@ -646,7 +642,8 @@ class NotebookGeneratorWithGCS:
         is_subtopic = 'parent_topic' in topic and topic['parent_topic'] != 'N/A'
 
         # Adjust content depth for subtopics (more focused)
-        content_depth = "focused" if is_subtopic else self.config.content_depth
+        config_dict = self.config if isinstance(self.config, dict) else {}
+        content_depth = "focused" if is_subtopic else config_dict.get("content_depth", "intermediate")
 
         # Build context from previous topics for cross-references
         context_summary = ""
@@ -662,7 +659,7 @@ class NotebookGeneratorWithGCS:
             Generate focused study notes for the following SUBTOPIC using structured markdown format.
             This is part of an iterative notebook generation process.
 
-            Subject: {self.config.subject}
+            Subject: {config_dict.get('subject', 'Unknown')}
             Parent Topic: {topic['parent_topic']}
             Subtopic: {topic['name']}
             Description: {topic.get('description', 'N/A')}
@@ -733,12 +730,12 @@ class NotebookGeneratorWithGCS:
             Generate comprehensive study notes for the following MAIN TOPIC using structured markdown format.
             This is iteration {len(previous_topics) + 1} in the notebook generation loop.
 
-            Subject: {self.config.subject}
+            Subject: {config_dict.get('subject', 'Unknown')}
             Topic: {topic['name']}
             Description: {topic.get('description', 'N/A')}
             Difficulty Level: {topic.get('difficulty', 'intermediate')}
-            Content Depth: {self.config.content_depth}
-            Category: {self.config.subject}
+            Content Depth: {config_dict.get('content_depth', 'intermediate')}
+            Category: {config_dict.get('subject', 'Unknown')}
 
             Key Concepts to Cover: {', '.join(topic.get('key_concepts', []))}
             Estimated Time: {topic.get('estimated_time', '2-4 hours')}
@@ -797,16 +794,97 @@ class NotebookGeneratorWithGCS:
             Ensure this topic builds logically upon the previous topics in the generation sequence.
             """
 
-        # Use Vertex AI notebook loop agent for content generation
-        print(f"🤖 Calling Vertex AI agent for topic: {topic['name']}")
-        response = await call_vertex_ai_agent(
-            endpoint=VERTEX_AI_NOTEBOOK_LOOP_ENDPOINT,
-            payload={"prompt": loop_prompt}
-        )
-        print(f"✅ Agent response received for topic: {topic['name']}")
-
-        # Parse the structured response into sections
-        parsed_sections = self._parse_structured_response(response)
+        # Try methods in order of preference:
+        # 1. Local ADK API server (if running)
+        # 2. Direct Gemini API (if GOOGLE_API_KEY set)
+        # 3. Placeholder content
+        
+        parsed_sections = None
+        
+        # Get user_id from notebook metadata (for ADK session)
+        user_id = _notebooks.get(self.notebook_id, {}).get("user_id", "anonymous")
+        
+        # Method 1: Try local ADK API server
+        try:
+            from adk_content_generator import generate_topic_content_adk
+            import requests
+            
+            # Quick check if ADK server is running
+            requests.get("http://localhost:8000/", timeout=1)
+            
+            print(f"  🤖 Using local ADK agents for: {topic['name']}")
+            parsed_sections = generate_topic_content_adk(
+                subject=config_dict.get('subject', 'Unknown'),
+                topic_name=topic['name'],
+                topic_description=topic.get('description', ''),
+                difficulty=topic.get('difficulty', 'intermediate'),
+                key_concepts=topic.get('key_concepts', []),
+                is_subtopic=is_subtopic,
+                parent_topic=topic.get('parent_topic'),
+                user_id=user_id  # Pass real user_id from JWT auth
+            )
+            print(f"  ✅ ADK content generated for: {topic['name']}")
+            
+        except (ImportError, requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            print(f"  ⚠️ ADK server not available, trying direct Gemini API...")
+            
+            # Method 2: Try direct Gemini API if GOOGLE_API_KEY is set
+            if os.environ.get("GOOGLE_API_KEY"):
+                try:
+                    from local_content_generator import generate_topic_content_local
+                    
+                    print(f"  🤖 Using direct Gemini API for: {topic['name']}")
+                    parsed_sections = generate_topic_content_local(
+                        subject=config_dict.get('subject', 'Unknown'),
+                        topic_name=topic['name'],
+                        topic_description=topic.get('description', ''),
+                        difficulty=topic.get('difficulty', 'intermediate'),
+                        key_concepts=topic.get('key_concepts', []),
+                        is_subtopic=is_subtopic,
+                        parent_topic=topic.get('parent_topic')
+                    )
+                    print(f"  ✅ Gemini API content generated for: {topic['name']}")
+                    
+                except Exception as e:
+                    print(f"  ⚠️ Gemini API failed: {e}")
+            
+        except Exception as e:
+            print(f"  ⚠️ ADK generation failed: {e}")
+        
+        # Method 3: Fall back to placeholder if all methods failed
+        if parsed_sections is None:
+            print(f"  📝 Using placeholder content for: {topic['name']}")
+        
+        if parsed_sections is None or not parsed_sections.get("detailed_content"):
+            # No API key - use placeholder content
+            placeholder_text = (
+                f"Content generation for topic '{topic['name']}' requires GOOGLE_API_KEY environment variable. "
+                "Get your free API key from https://aistudio.google.com/app/apikey and set it to enable AI content generation."
+            )
+            
+            parsed_sections = {
+                "learning_objectives": "Define what you want to achieve for this topic.",
+                "key_concepts": "List the key concepts you plan to cover.",
+                "detailed_content": placeholder_text,
+                "core_principles": "",
+                "common_patterns": "",
+                "important_notes": "",
+                "examples": "",
+                "practical_applications": "",
+                "exercises": "",
+                "beginner_exercises": "",
+                "intermediate_exercises": "",
+                "advanced_challenges": "",
+                "related_topics": topic.get("parent_topic", "See main index for related topics"),
+                "prerequisites": "",
+                "next_steps": "",
+                "cross_references": "",
+                "resources": "",
+                "recommended_reading": "",
+                "online_resources": "",
+                "tools": "",
+                "study_notes": "",
+            }
 
         return {
             "name": topic["name"],
@@ -856,12 +934,29 @@ class Settings(BaseSettings):
     google_client_id: str = Field(default="", env="GOOGLE_CLIENT_ID")
     google_client_secret: str = Field(default="", env="GOOGLE_CLIENT_SECRET")
     
+    # Google API Settings
+    google_api_key: str = Field(default="", env="GOOGLE_API_KEY")
+    google_genai_use_vertexai: str = Field(default="0", env="GOOGLE_GENAI_USE_VERTEXAI")
+    
+    # GCP Settings
+    gcp_project_id: str = Field(default="learnpad-gcp", env="GCP_PROJECT_ID")
+    google_application_credentials: str = Field(default="", env="GOOGLE_APPLICATION_CREDENTIALS")
 
     # GCS Settings
     gcs_project_id: str = Field(default="learnpad-gcp", env="GCS_PROJECT_ID")
     gcs_bucket_name: str = Field(default="learnpad-gcp-dev", env="GCS_BUCKET_NAME")
     gcs_credentials_path: str = Field(default="learnpad-backend-key.json", env="GCS_CREDENTIALS_PATH")
     gcs_base_path: str = Field(default="users", env="GCS_BASE_PATH")
+    
+    # Vertex AI Agent Engine Settings
+    notebook_engine_id: str = Field(default="", env="NOTEBOOK_ENGINE_ID")
+    agent_app_name: str = Field(default="notebook_orchestrator", env="AGENT_APP_NAME")
+    google_cloud_project: str = Field(default="", env="GOOGLE_CLOUD_PROJECT")
+    google_cloud_location: str = Field(default="us-central1", env="GOOGLE_CLOUD_LOCATION")
+    
+    # API Settings
+    backend_url: str = Field(default="http://localhost:8000", env="BACKEND_URL")
+    
     # CORS Settings
     cors_origins: list[str] = Field(default=["http://localhost:3000", "http://localhost:8001"], env="CORS_ORIGINS")
     
@@ -876,12 +971,38 @@ class Settings(BaseSettings):
 # Initialize settings
 settings = Settings()
 
+REMOTE_AGENT_APP = None  # Populated on startup when we construct the deployed ReasoningEngine
+
+
+def init_vertex_ai() -> Dict[str, str]:
+    """
+    Initialize the Vertex AI client using configured project/location.
+    
+    Uses, in order of precedence:
+    - settings.google_cloud_project / settings.google_cloud_location
+    - GOOGLE_CLOUD_PROJECT / GOOGLE_CLOUD_LOCATION environment variables
+    """
+    project = settings.google_cloud_project or os.getenv("GOOGLE_CLOUD_PROJECT")
+    location = settings.google_cloud_location or os.getenv("GOOGLE_CLOUD_LOCATION")
+
+    if not project or not location:
+        raise RuntimeError(
+            "Vertex AI not configured. Set GOOGLE_CLOUD_PROJECT and "
+            "GOOGLE_CLOUD_LOCATION in src/api/.env or Settings."
+        )
+
+    vertexai.init(project=project, location=location)
+    print(f"✅ Vertex AI initialized (project={project}, location={location})")
+    return {"project": project, "location": location}
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title="LearnPad API",
     description="Authentication-enabled API for LearnPad application",
     version="1.0.0"
 )
+
 
 # Add CORS middleware
 app.add_middleware(
@@ -1000,6 +1121,29 @@ class NotebookGenerateRequest(BaseModel):
         },
         description="Generation options"
     )
+
+
+class NotebookGenerateRequestV2(BaseModel):
+    """Request to generate notebook using deployed Vertex AI agents (ADK-based)."""
+    user_id: str = Field(..., description="User ID")
+    notebook_id: str = Field(..., description="Unique notebook ID")
+    subject: str = Field(..., description="Subject or topic for the notebook")
+    user_profile: Dict[str, Any] = Field(..., description="User profile from assessment")
+    learning_goals: str = Field(..., description="User's learning goals")
+    user_experience_level: str = Field(..., description="beginner, intermediate, or advanced")
+    learning_style: Optional[str] = Field(None, description="visual, hands_on, theoretical, or mixed")
+    time_constraints: Optional[str] = Field(None, description="Time constraints (e.g., '4 weeks')")
+
+
+class NotebookGenerateResponseV2(BaseModel):
+    """Response for V2 notebook generation using deployed agents."""
+    success: bool = Field(..., description="Whether generation succeeded")
+    notebook_id: str = Field(..., description="Notebook ID")
+    user_id: str = Field(..., description="User ID")
+    files: List[Dict[str, Any]] = Field(..., description="List of generated files with metadata")
+    curriculum: Optional[Dict[str, Any]] = Field(None, description="Generated curriculum structure")
+    message: str = Field(..., description="Status message")
+    bucket_name: Optional[str] = Field(None, description="GCS bucket where files are stored")
 
 
 class ProgressInfo(BaseModel):
@@ -1343,36 +1487,31 @@ async def start_assessment(request: AssessmentStartRequest, current_user: TokenD
         initial_prompt += f"Your initial goals are: {request.initial_goals}. "
     initial_prompt += "Let's start by understanding your learning preferences and experience level. What's your current experience level with this subject?"
     
-    try:
-        # Call Vertex AI user assessment agent
-        response_text = await call_vertex_ai_agent(
-            endpoint=VERTEX_AI_USER_ASSESSMENT_ENDPOINT,
-            payload={"prompt": initial_prompt}
-        )
-        
-        _assessment_sessions[session_id] = {
-            "session_id": session_id,
-            "user_id": request.user_id,
-            "conversation_history": [
-                {"role": "assistant", "content": response_text}
-            ],
-            "status": "in_progress",
-            "profile": None,
-            "created_at": datetime.now(timezone.utc),
-            "expires_at": expires_at
-        }
-        
-        return AssessmentStartResponse(
-            session_id=session_id,
-            status="started",
-            initial_message=response_text,
-            created_at=datetime.now(timezone.utc).isoformat()
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error starting assessment: {str(e)}"
-        )
+    # Agentic assessment is disabled; respond with a static assistant message
+    response_text = (
+        "Hi! The automated assessment agent is currently disabled, but we can still "
+        "set up your learning profile. Please describe your current experience level "
+        "with this subject, your goals, and how you prefer to learn."
+    )
+
+    _assessment_sessions[session_id] = {
+        "session_id": session_id,
+        "user_id": request.user_id,
+        "conversation_history": [
+            {"role": "assistant", "content": response_text}
+        ],
+        "status": "in_progress",
+        "profile": None,
+        "created_at": datetime.now(timezone.utc),
+        "expires_at": expires_at
+    }
+
+    return AssessmentStartResponse(
+        session_id=session_id,
+        status="started",
+        initial_message=response_text,
+        created_at=datetime.now(timezone.utc).isoformat()
+    )
 
 
 @app.post("/api/notebooks/assess/{session_id}/message", response_model=AssessmentMessageResponse)
@@ -1407,45 +1546,23 @@ async def send_assessment_message(
             detail="Access denied"
         )
     
-    # Build conversation context
-    conversation_context = "\n".join([
-        f"{msg['role']}: {msg['content']}"
-        for msg in session["conversation_history"]
-    ])
-    conversation_context += f"\nuser: {request.message}"
-    
-    try:
-        # Call Vertex AI user assessment agent
-        response_text = await call_vertex_ai_agent(
-            endpoint=VERTEX_AI_USER_ASSESSMENT_ENDPOINT,
-            payload={"prompt": conversation_context}
-        )
-        
-        # Update conversation history
-        session["conversation_history"].append({"role": "user", "content": request.message})
-        session["conversation_history"].append({"role": "assistant", "content": response_text})
-        
-        # Check if profile is complete (agent should call create_user_profile)
-        # For now, we'll check if the response indicates completion
-        profile_complete = "profile" in response_text.lower() or session.get("profile") is not None
-        
-        if profile_complete and session.get("profile") is None:
-            # Try to extract profile from response
-            # In a real implementation, the agent would call the tool and we'd capture it
-            # For now, we'll mark it as complete if the agent mentions it
-            pass
-        
-        return AssessmentMessageResponse(
-            session_id=session_id,
-            response=response_text,
-            assessment_status="complete" if profile_complete else "in_progress",
-            profile_complete=profile_complete
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error processing message: {str(e)}"
-        )
+    # get the ADK Client
+    adk_client = ADKClient()
+    # call the user assessment agent through HTTP Call to the ADK Server to get the response 
+    assistant_reply = adk_client.run_agent(app_name="user_assessment", user_id=request.user_id, session_id=session_id, message=request.message)
+
+    # Update conversation history
+    session["conversation_history"].append({"role": "user", "content": request.message})
+    session["conversation_history"].append({"role": "assistant", "content": assistant_reply})
+
+    profile_complete = False
+
+    return AssessmentMessageResponse(
+        session_id=session_id,
+        response=assistant_reply,
+        assessment_status="in_progress",
+        profile_complete=profile_complete
+    )
 
 
 @app.get("/api/notebooks/assess/{session_id}/profile", response_model=AssessmentProfileResponse)
@@ -1520,72 +1637,43 @@ async def create_curriculum_plan(
     """Create a curriculum plan from user profile and subject."""
     plan_id = str(uuid.uuid4())
     
-    try:
-        # Prepare prompt for curriculum planner
-        user_profile_str = json.dumps(request.user_profile)
-        prompt = f"""
-        Create a comprehensive curriculum plan for the following:
-        
-        Subject: {request.subject}
-        Learning Goals: {request.learning_goals or 'Not specified'}
-        Time Constraints: {request.time_constraints or 'Not specified'}
-        
-        User Profile:
-        {user_profile_str}
-        
-        Please use the generate_complete_curriculum tool to create a full curriculum plan that includes:
-        - Learning path with topic sequences
-        - Notebook structure
-        - Content depth plan
-        - Assessment plan
-        - Practice progression
-        """
-        
-        # Call Vertex AI curriculum planner agent
-        response_text = await call_vertex_ai_agent(
-            endpoint=VERTEX_AI_CURRICULUM_PLANNER_ENDPOINT,
-            payload={"prompt": prompt}
-        )
-        
-        # Parse curriculum (simplified - in production, extract from tool call)
-        curriculum = {
-            "subject": request.subject,
-            "curriculum_metadata": {
-                "created_for": request.user_profile.get("experience_level", "intermediate"),
-                "estimated_completion_time": request.time_constraints or "TBD",
-                "total_notebooks": 1,
-                "total_topics": 5
-            },
-            "learning_path": {
-                "topics": [],
-                "prerequisite_map": {},
-                "learning_path_summary": response_text[:500]
-            },
-            "notebook_structure": {},
-            "content_depth_plan": {},
-            "assessment_plan": {},
-            "practice_progression": {}
-        }
-        
-        _curriculum_plans[plan_id] = {
-            "plan_id": plan_id,
-            "curriculum": curriculum,
-            "status": "complete",
-            "created_at": datetime.now(timezone.utc),
-            "user_id": current_user.sub
-        }
-        
-        return CurriculumPlanResponse(
-            plan_id=plan_id,
-            curriculum=curriculum,
-            status="complete",
-            created_at=datetime.now(timezone.utc).isoformat()
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error creating curriculum plan: {str(e)}"
-        )
+    # Agentic curriculum planning is disabled; create a simple placeholder plan
+    curriculum = {
+        "subject": request.subject,
+        "curriculum_metadata": {
+            "created_for": request.user_profile.get("experience_level", "intermediate"),
+            "estimated_completion_time": request.time_constraints or "TBD",
+            "total_notebooks": 1,
+            "total_topics": 5,
+        },
+        "learning_path": {
+            "topics": [],
+            "prerequisite_map": {},
+            "learning_path_summary": (
+                "Automatic curriculum planning via Vertex AI agents is disabled. "
+                "This is a placeholder plan based on the provided subject and user profile."
+            ),
+        },
+        "notebook_structure": {},
+        "content_depth_plan": {},
+        "assessment_plan": {},
+        "practice_progression": {},
+    }
+
+    _curriculum_plans[plan_id] = {
+        "plan_id": plan_id,
+        "curriculum": curriculum,
+        "status": "complete",
+        "created_at": datetime.now(timezone.utc),
+        "user_id": current_user.sub,
+    }
+
+    return CurriculumPlanResponse(
+        plan_id=plan_id,
+        curriculum=curriculum,
+        status="complete",
+        created_at=datetime.now(timezone.utc).isoformat(),
+    )
 
 
 @app.get("/api/notebooks/plan/{plan_id}", response_model=CurriculumPlanResponse)
@@ -1624,12 +1712,6 @@ async def generate_notebook(
     current_user: TokenData = Depends(get_current_user)
 ):
     """Generate notebook from curriculum plan or config."""
-    if not NotebookGenerator:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Notebook generator not available"
-        )
-    
     notebook_id = str(uuid.uuid4())
     
     # Determine config source
@@ -1684,6 +1766,37 @@ async def generate_notebook(
         ),
         notebook_path=None,
         created_at=datetime.now(timezone.utc).isoformat()
+    )
+
+
+@app.post("/api/notebooks/generate-v2", response_model=NotebookGenerateResponseV2)
+async def generate_notebook_v2(
+    request: NotebookGenerateRequestV2,
+    current_user: TokenData = Depends(get_current_user)
+):
+    """
+    Generate a notebook using the deployed Vertex AI Notebook Engine (ADK-based).
+    
+    NOTE: The original implementation used Vertex AI Agent Engine (ADK) and
+    imported local agents. That integration has been disabled to simplify the
+    backend and avoid tight coupling to agent deployment.
+
+    For now, this endpoint returns a 503-style response indicating that
+    notebook generation via agents is temporarily unavailable.
+    """
+    # Temporary non-agentic stub response
+    return NotebookGenerateResponseV2(
+        success=False,
+        notebook_id=request.notebook_id,
+        user_id=request.user_id,
+        files=[],
+        curriculum=None,
+        message=(
+            "Notebook generation via Vertex AI agents is currently disabled in the API "
+            "server. Please use the classic /api/notebooks/generate endpoint instead, "
+            "or re-enable agent integration when ready."
+        ),
+        bucket_name=None,
     )
 
 
