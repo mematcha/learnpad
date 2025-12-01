@@ -1,15 +1,16 @@
-from google.adk.agents.llm_agent import Agent
-from google.adk.models.google_llm import Gemini
-from google.genai import types
 from typing import Dict, Any, List, Optional
 import json
+from google.genai import types
 
 retry_config = types.HttpRetryOptions(
-    attempts=5,  # Maximum retry attempts
-    exp_base=7,  # Delay multiplier
+    attempts=5,
+    exp_base=7,
     initial_delay=1,
-    http_status_codes=[429, 500, 503, 504],  # Retry on these HTTP errors
+    http_status_codes=[429, 500, 503, 504],
 )
+
+# Note: When using ADK Agents, the SDK is initialized by the ADK framework
+# No need to manually initialize google.generativeai here
 
 INSTRUCTION_TEXT = """
 You are a Curriculum Designer Agent responsible for designing comprehensive learning curricula and notebook structures based on user assessment data.
@@ -388,20 +389,37 @@ def generate_complete_curriculum(
         }
 
 
-root_agent = Agent(
-    model=Gemini(
-        model="gemini-2.5-flash",
-        retry_options=retry_config
-    ),
-    name="curriculum_planner_agent",
-    description="Designs learning curricula and notebook structures based on user assessment",
-    instruction=INSTRUCTION_TEXT,
-    tools=[
-        create_learning_path,
-        design_notebook_structure,
-        determine_content_depth,
-        plan_assessment_points,
-        design_practice_progression,
-        generate_complete_curriculum,
-    ],
-)
+# Create ADK Agent with all curriculum planning tools
+try:
+    from google.adk.agents.llm_agent import Agent
+    from google.adk.models.google_llm import Gemini
+    
+    import os
+    
+    root_agent = Agent(
+        model=Gemini(
+            model="gemini-2.5-flash",
+            retry_options=retry_config,
+            # Configure to use Vertex AI (not API key)
+            vertexai=True,
+            project=os.getenv("GOOGLE_CLOUD_PROJECT"),
+            location=os.getenv("GOOGLE_CLOUD_LOCATION")
+        ),
+        name="curriculum_planner_agent",
+        description="Specialist agent for designing comprehensive learning curricula, notebook structures, and learning paths based on user assessment data",
+        instruction=INSTRUCTION_TEXT,
+        tools=[
+            create_learning_path,
+            design_notebook_structure,
+            determine_content_depth,
+            plan_assessment_points,
+            design_practice_progression,
+            generate_complete_curriculum,
+        ],
+    )
+except ImportError as e:
+    # Fallback: Create a simple agent class if ADK is not available
+    # If ADK is not available, the agent cannot function
+    print(f"ERROR: Google ADK is required for curriculum_planner agent: {e}")
+    print("Install with: pip install google-adk google-cloud-aiplatform google-genai")
+    root_agent = None
