@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
+import { NotebookLoader } from '@/components/ui/notebook-loader';
 import { cn } from '@/lib/utils';
 import { assessmentAPI, curriculumAPI, notebookAPI } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/stores/auth-store';
+import { useRouter } from 'next/navigation';
 
 interface Message {
   id: string;
@@ -28,7 +30,7 @@ interface ProjectCreationChatProps {
   className?: string;
 }
 
-type ConversationStep = 'assessment' | 'curriculum' | 'generating' | 'complete';
+type ConversationStep = 'assessment' | 'assessment_complete' | 'curriculum' | 'generating' | 'complete';
 
 const initialMessage: Message = {
   id: '1',
@@ -39,6 +41,7 @@ const initialMessage: Message = {
 
 export function ProjectCreationChat({ onComplete, className }: ProjectCreationChatProps) {
   const { user } = useAuthStore();
+  const router = useRouter();
   const [messages, setMessages] = React.useState<Message[]>([initialMessage]);
   const [inputValue, setInputValue] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
@@ -140,9 +143,9 @@ export function ProjectCreationChat({ onComplete, className }: ProjectCreationCh
                 progressIntervalRef.current = null;
               }
 
-              // Call onComplete callback
+              // Redirect to the notebook page
               setTimeout(() => {
-                onComplete?.({ notebook_id: notebookId });
+                router.push(`/notebook/${notebookId}`);
               }, 1500);
               return;
             } else if (response.status === 'error') {
@@ -271,8 +274,18 @@ export function ProjectCreationChat({ onComplete, className }: ProjectCreationCh
         const profileResponse = await assessmentAPI.getAssessmentProfile(assessmentSessionId);
         setUserProfile(profileResponse.profile);
 
-        // Move to curriculum planning phase
-        await handleCurriculumPlanning(profileResponse.profile);
+        // Assessment is complete - wait for user to click "Create Notebook"
+        setConversationStep('assessment_complete');
+
+        // Add completion message
+        const completionMessage: Message = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: 'Perfect! I now have a good understanding of your learning preferences and goals. Click the **"Create Notebook"** button below to generate your personalized learning notebook.',
+          timestamp: new Date(),
+        };
+
+        setMessages(prev => [...prev, completionMessage]);
       }
     } catch (err: any) {
       console.error('Failed to send assessment message:', err);
@@ -351,7 +364,7 @@ export function ProjectCreationChat({ onComplete, className }: ProjectCreationCh
         curriculum_plan_id: curriculumResponse.plan_id
       }));
 
-      // Move to notebook generation phase
+      // Curriculum planning complete - now start notebook generation
       await handleNotebookGeneration(curriculumResponse.plan_id);
 
     } catch (err: any) {
@@ -392,6 +405,19 @@ export function ProjectCreationChat({ onComplete, className }: ProjectCreationCh
         setMessages(prev => [...prev, errorResponse]);
         setConversationStep('assessment'); // Allow retry from assessment
       }
+    }
+  };
+
+  const handleCreateNotebook = async () => {
+    if (!userProfile) return;
+
+    try {
+      setError(null);
+      // Start the curriculum planning and notebook generation process
+      await handleCurriculumPlanning(userProfile);
+    } catch (err) {
+      console.error('Failed to start notebook creation:', err);
+      setError('Failed to start notebook creation. Please try again.');
     }
   };
 
@@ -471,7 +497,7 @@ export function ProjectCreationChat({ onComplete, className }: ProjectCreationCh
   };
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim() || isLoading || conversationStep === 'complete' || conversationStep === 'curriculum' || conversationStep === 'generating') return;
+    if (!inputValue.trim() || isLoading || conversationStep === 'complete' || conversationStep === 'curriculum' || conversationStep === 'generating' || conversationStep === 'assessment_complete') return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -509,6 +535,26 @@ export function ProjectCreationChat({ onComplete, className }: ProjectCreationCh
     }
   };
 
+  // Show loader during generation
+  if (conversationStep === 'generating' || conversationStep === 'curriculum') {
+    return (
+      <div className={cn('flex flex-col h-full', className)}>
+        <div className="flex-1 flex items-center justify-center p-8">
+          <NotebookLoader
+            status={conversationStep === 'curriculum' ? 'curriculum' : 'generating'}
+            currentStep={generationProgress?.current_step}
+            progress={generationProgress?.percentage || 0}
+            message={
+              conversationStep === 'curriculum'
+                ? 'Creating your personalized learning plan...'
+                : generationProgress?.current_step || 'Building your learning content...'
+            }
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={cn('flex flex-col h-full', className)}>
       {/* Step indicator */}
@@ -516,8 +562,7 @@ export function ProjectCreationChat({ onComplete, className }: ProjectCreationCh
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
             {conversationStep === 'assessment' && '📝 Assessment'}
-            {conversationStep === 'curriculum' && '📚 Curriculum Planning'}
-            {conversationStep === 'generating' && '🔄 Generating Notebook'}
+            {conversationStep === 'assessment_complete' && '✅ Assessment Complete'}
             {conversationStep === 'complete' && '✅ Complete'}
           </span>
           {generationProgress && (
@@ -586,25 +631,6 @@ export function ProjectCreationChat({ onComplete, className }: ProjectCreationCh
             </div>
           )}
 
-          {/* Generation progress */}
-          {conversationStep === 'generating' && generationProgress && (
-            <div className="flex gap-3 justify-start">
-              <div className="flex-shrink-0">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <Bot className="h-3 w-3" />
-                </div>
-              </div>
-              <div className="bg-muted rounded-lg px-3 py-2 max-w-[80%]">
-                <div className="text-sm">
-                  <div className="font-medium">{generationProgress.current_step}</div>
-                  <Progress value={generationProgress.percentage} className="mt-2 h-2" />
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {generationProgress.percentage}% complete
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Error display */}
           {error && (
@@ -622,7 +648,35 @@ export function ProjectCreationChat({ onComplete, className }: ProjectCreationCh
         </div>
       </ScrollArea>
 
-      <div className="border-t p-4">
+      {/* Create Notebook Button */}
+      {conversationStep === 'assessment_complete' && (
+        <div className="border-t p-4 bg-primary/5">
+          <div className="flex justify-center">
+            <Button
+              onClick={handleCreateNotebook}
+              disabled={isLoading}
+              size="lg"
+              className="px-8"
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                  Creating Notebook...
+                </>
+              ) : (
+                <>
+                  🚀 Create My Notebook
+                </>
+              )}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground text-center mt-2">
+            This will generate a personalized learning notebook based on our conversation
+          </p>
+        </div>
+      )}
+
+      <div className="p-4">
         <div className="flex items-end space-x-2">
           <Input
             value={inputValue}
@@ -633,13 +687,11 @@ export function ProjectCreationChat({ onComplete, className }: ProjectCreationCh
                 ? messages.filter(m => m.role === 'user').length === 0
                   ? 'What subject would you like to learn about?'
                   : 'Tell me about your learning goals...'
-                : conversationStep === 'curriculum'
-                ? 'Planning your curriculum...'
-                : conversationStep === 'generating'
-                ? 'Generating your notebook...'
+                : conversationStep === 'assessment_complete'
+                ? 'Assessment complete! Click "Create Notebook" above.'
                 : 'Notebook ready! Click "Open Notebook"'
             }
-            disabled={isLoading || conversationStep !== 'assessment'}
+            disabled={isLoading || conversationStep !== 'assessment' && conversationStep !== 'assessment_complete'}
             className="min-h-[40px] resize-none"
           />
           <Button

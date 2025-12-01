@@ -38,6 +38,7 @@ export {
 export { Badge, badgeVariants, type BadgeProps } from './badge';
 export { Modal, ModalContainer } from './modal';
 export { Progress } from './progress';
+export { NotebookLoader } from './notebook-loader';
 export {
   DropdownMenu,
   DropdownMenuTrigger,

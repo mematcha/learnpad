@@ -171,6 +171,16 @@ export const notebookAPI = {
     });
     return response.data;
   },
+
+  /**
+   * Get notebook file content
+   */
+  getNotebookFile: async (notebookId: string, filePath: string) => {
+    const response = await apiClient.get(`/api/notebooks/${notebookId}/file`, {
+      params: { file_path: filePath },
+    });
+    return response.data;
+  },
 };
 
 // Assessment API methods
