@@ -1,0 +1,11 @@
+.venv
+__pycache__/
+config/
+internal_docs/
+.env
+study_notes_generator
+music_theory
+learnpad-backend-key.json
+cors.json
+application_default_credentials.json
+src/agents/deployment_metadata.json
