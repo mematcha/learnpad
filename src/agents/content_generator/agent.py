@@ -13,34 +13,8 @@ retry_config = types.HttpRetryOptions(
     http_status_codes=[429, 500, 503, 504],  # Retry on these HTTP errors
 )
 
-# Import standard Google Generative AI SDK for content generation
-_content_model = None
-_use_genai_sdk = False
-_genai_error = None
-
-try:
-    import google.generativeai as genai
-    import os
-    
-    # Configure with API key from environment
-    # The google-generativeai SDK requires an explicit API key
-    api_key = os.getenv("GOOGLE_API_KEY")
-    
-    if api_key:
-        genai.configure(api_key=api_key)
-        _content_model = genai.GenerativeModel("gemini-2.5-flash")
-        _use_genai_sdk = True
-    else:
-        # No API key available - the SDK requires it
-        _genai_error = "GOOGLE_API_KEY environment variable not set. Get your API key from https://makersuite.google.com/app/apikey"
-        _use_genai_sdk = False
-            
-except ImportError as e:
-    _genai_error = f"google-generativeai package not installed: {str(e)}"
-    _use_genai_sdk = False
-except Exception as e:
-    _genai_error = f"Error configuring Google Generative AI: {str(e)}"
-    _use_genai_sdk = False
+# Note: When using ADK Agents, the SDK is initialized by the ADK framework
+# No need to manually initialize google.generativeai here
 
 INSTRUCTION_TEXT = """
 You are a Content Generator Agent specialized in creating high-quality educational content for programming education.
@@ -148,71 +122,12 @@ def generate_content(
         
         prompt = "\n".join(prompt_parts)
         
-        # Generate content using the model
-        if _use_genai_sdk and _content_model:
-            try:
-                response = _content_model.generate_content(prompt)
-                return response.text
-            except Exception as e:
-                error_msg = str(e)
-                # Provide specific guidance based on error type
-                if "API key" in error_msg.lower() or "authentication" in error_msg.lower():
-                    guidance = """
-**Authentication Error**: The Google Generative AI API requires an API key.
-
-**To fix this:**
-1. Get a Google API key from: https://makersuite.google.com/app/apikey
-2. Set it as an environment variable:
-   ```bash
-   export GOOGLE_API_KEY="your-api-key-here"
-   ```
-3. Or add it to your `.env` file:
-   ```
-   GOOGLE_API_KEY=your-api-key-here
-   ```
-4. Restart your application
-
-**Alternative**: You can use the content_generator_agent directly in conversation - it uses the ADK which handles authentication automatically.
-"""
-                else:
-                    guidance = f"Error: {error_msg}\n\nPlease check your API configuration or use the content_generator_agent directly in conversation."
-                
-                return f"""Content Generation Error
-
-{guidance}
-
-**Request Details:**
-- Topic: {topic}
-- Category: {category}
-- Difficulty: {difficulty_level}
-"""
-        else:
-            # Fallback: Provide a helpful message
-            error_detail = _genai_error if _genai_error else "API not configured"
-            return f"""Content Generation Request Received
-
-I received your content generation request, but I'm unable to generate automated content at the moment.
-
-**Issue**: {error_detail}
-
-**Request Details:**
-- Topic: {topic}
-- Category: {category}
-- Difficulty: {difficulty_level}
-- Learning Style: {learning_style or 'Not specified'}
-
-**To enable automated content generation:**
-1. Install the package: `pip install google-generativeai>=0.8.5`
-2. Get a Google API key: https://makersuite.google.com/app/apikey
-3. Set environment variable: `export GOOGLE_API_KEY="your-key"`
-4. Restart your application
-
-**Alternative - Use Interactive Generation:**
-You can use the content_generator_agent directly in conversation for interactive content generation. The agent itself is working and can provide content through conversation.
-"""
+        # For ADK agents, tools should return structured data/instructions
+        # The agent's LLM will process the tool output
+        return prompt
         
     except Exception as e:
-        return f"Error generating content: {str(e)}. Please try again or provide more specific requirements."
+        return f"Error in generate_content tool: {str(e)}"
 
 
 def create_examples(
@@ -268,60 +183,11 @@ def create_examples(
         
         prompt = "\n".join(prompt_parts)
         
-        # Generate examples using the model
-        if _use_genai_sdk and _content_model:
-            try:
-                response = _content_model.generate_content(prompt)
-                return response.text
-            except Exception as e:
-                error_msg = str(e)
-                if "API key" in error_msg.lower() or "authentication" in error_msg.lower():
-                    guidance = """
-**Authentication Error**: The Google Generative AI API requires an API key.
-
-**To fix this:**
-1. Get a Google API key from: https://makersuite.google.com/app/apikey
-2. Set it as an environment variable: `export GOOGLE_API_KEY="your-api-key-here"`
-3. Restart your application
-
-**Alternative**: You can use the content_generator_agent directly in conversation.
-"""
-                else:
-                    guidance = f"Error: {error_msg}\n\nPlease check your API configuration."
-                
-                return f"""Example Generation Error
-
-{guidance}
-
-**Request Details:**
-- Topic: {topic}
-- Difficulty: {difficulty_level}
-- Number of examples: {num_examples}
-"""
-        else:
-            error_detail = _genai_error if _genai_error else "API not configured"
-            return f"""Example Generation Request Received
-
-I received your example generation request, but I'm unable to generate automated examples at the moment.
-
-**Issue**: {error_detail}
-
-**Request Details:**
-- Topic: {topic}
-- Difficulty: {difficulty_level}
-- Number of examples: {num_examples}
-
-**To enable automated example generation:**
-1. Install: `pip install google-generativeai>=0.8.5`
-2. Get API key: https://makersuite.google.com/app/apikey
-3. Set: `export GOOGLE_API_KEY="your-key"`
-4. Restart your application
-
-**Alternative**: Use the content_generator_agent directly in conversation.
-"""
+        # For ADK agents, tools return instructions for the agent's LLM to process
+        return prompt
         
     except Exception as e:
-        return f"Error creating examples: {str(e)}. Please try again or provide more specific requirements."
+        return f"Error in create_examples tool: {str(e)}"
 
 
 def create_exercises(
@@ -390,62 +256,11 @@ def create_exercises(
         
         prompt = "\n".join(prompt_parts)
         
-        # Generate exercises using the model
-        if _use_genai_sdk and _content_model:
-            try:
-                response = _content_model.generate_content(prompt)
-                return response.text
-            except Exception as e:
-                error_msg = str(e)
-                if "API key" in error_msg.lower() or "authentication" in error_msg.lower():
-                    guidance = """
-**Authentication Error**: The Google Generative AI API requires an API key.
-
-**To fix this:**
-1. Get a Google API key from: https://makersuite.google.com/app/apikey
-2. Set it as an environment variable: `export GOOGLE_API_KEY="your-api-key-here"`
-3. Restart your application
-
-**Alternative**: You can use the content_generator_agent directly in conversation.
-"""
-                else:
-                    guidance = f"Error: {error_msg}\n\nPlease check your API configuration."
-                
-                return f"""Exercise Generation Error
-
-{guidance}
-
-**Request Details:**
-- Topic: {topic}
-- Difficulty: {difficulty_level}
-- Number of exercises: {num_exercises}
-- Exercise type: {exercise_type}
-"""
-        else:
-            error_detail = _genai_error if _genai_error else "API not configured"
-            return f"""Exercise Generation Request Received
-
-I received your exercise generation request, but I'm unable to generate automated exercises at the moment.
-
-**Issue**: {error_detail}
-
-**Request Details:**
-- Topic: {topic}
-- Difficulty: {difficulty_level}
-- Number of exercises: {num_exercises}
-- Exercise type: {exercise_type}
-
-**To enable automated exercise generation:**
-1. Install: `pip install google-generativeai>=0.8.5`
-2. Get API key: https://makersuite.google.com/app/apikey
-3. Set: `export GOOGLE_API_KEY="your-key"`
-4. Restart your application
-
-**Alternative**: Use the content_generator_agent directly in conversation.
-"""
+        # For ADK agents, tools return instructions for the agent's LLM to process
+        return prompt
         
     except Exception as e:
-        return f"Error creating exercises: {str(e)}. Please try again or provide more specific requirements."
+        return f"Error in create_exercises tool: {str(e)}"
 
 def session_service_builder():
     import os
@@ -454,10 +269,16 @@ def session_service_builder():
         location=os.getenv("GOOGLE_CLOUD_LOCATION"),
     )
 
+import os
+
 root_agent = Agent(
     model=Gemini(
         model="gemini-2.5-flash",
-        retry_options=retry_config
+        retry_options=retry_config,
+        # Configure to use Vertex AI (not API key)
+        vertexai=True,
+        project=os.getenv("GOOGLE_CLOUD_PROJECT"),
+        location=os.getenv("GOOGLE_CLOUD_LOCATION")
     ),
     name="content_generator_agent",
     description="Specialist agent for generating educational content including explanations, examples, and exercises for programming education",
