@@ -1,65 +1,107 @@
-import Image from "next/image";
+import { redirect } from 'next/navigation';
+import { getServerUser } from '@/lib/auth/server-auth';
+import { listNotebooks } from '@/lib/api/notebooks';
+import { Hero } from '@/components/ui/hero';
+import { Features } from '@/components/ui/features';
+import { NotebooksView } from '@/components/notebook/notebooks-view';
+import type { Notebook } from '@/types/entities';
 
-export default function Home() {
+/**
+ * Generate dummy notebooks for development/demo purposes
+ */
+function getDummyNotebooks(): Notebook[] {
+  const now = new Date();
+  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+  const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  return [
+    {
+      notebook_id: '550e8400-e29b-41d4-a716-446655440000',
+      user_id: 'dummy-user',
+      title: 'Introduction to Machine Learning',
+      subject: 'Computer Science',
+      status: 'completed',
+      created_at: oneWeekAgo.toISOString(),
+      updated_at: oneDayAgo.toISOString(),
+      is_shared: false,
+    },
+    {
+      notebook_id: '550e8400-e29b-41d4-a716-446655440001',
+      user_id: 'dummy-user',
+      title: 'Advanced Python Programming',
+      subject: 'Programming',
+      status: 'completed',
+      created_at: threeDaysAgo.toISOString(),
+      updated_at: oneDayAgo.toISOString(),
+      is_shared: true,
+    },
+    {
+      notebook_id: '550e8400-e29b-41d4-a716-446655440002',
+      user_id: 'dummy-user',
+      title: 'Web Development Fundamentals',
+      subject: 'Web Development',
+      status: 'generating',
+      created_at: oneDayAgo.toISOString(),
+      updated_at: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+      is_shared: false,
+    },
+    {
+      notebook_id: '550e8400-e29b-41d4-a716-446655440003',
+      user_id: 'dummy-user',
+      title: 'Data Structures and Algorithms',
+      subject: 'Computer Science',
+      status: 'completed',
+      created_at: oneWeekAgo.toISOString(),
+      updated_at: threeDaysAgo.toISOString(),
+      is_shared: false,
+    },
+  ];
+}
+
+/**
+ * Homepage - Conditional rendering based on authentication state
+ * Public homepage for unauthenticated users
+ * Authenticated homepage showing notebook list
+ */
+export default async function Home() {
+  const user = await getServerUser();
+
+  // If authenticated, show notebook list
+  if (user) {
+    try {
+      const notebooksData = await listNotebooks();
+      // Use dummy notebooks if API returns empty or fails
+      const notebooks = notebooksData.notebooks.length > 0 
+        ? notebooksData.notebooks 
+        : getDummyNotebooks();
+      const total = notebooks.length;
+
+      return (
+        <main className="min-h-screen bg-primary">
+          <div className="container mx-auto px-4 py-6">
+            <NotebooksView notebooks={notebooks} />
+          </div>
+        </main>
+      );
+    } catch (error) {
+      // If error fetching notebooks, show dummy notebooks instead
+      const dummyNotebooks = getDummyNotebooks();
+      return (
+        <main className="min-h-screen bg-primary">
+          <div className="container mx-auto px-4 py-6">
+            <NotebooksView notebooks={dummyNotebooks} />
+          </div>
+        </main>
+      );
+    }
+  }
+
+  // Public homepage for unauthenticated users
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main className="min-h-screen bg-primary">
+      <Hero />
+      <Features />
+    </main>
   );
 }

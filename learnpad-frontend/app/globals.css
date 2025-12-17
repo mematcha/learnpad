@@ -1,26 +1,99 @@
 @import "tailwindcss";
 
+/* Design Tokens - Constitution P2 & P3 */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Colors - Dark mode primary (Constitution P3) */
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #1a1a1a;
+  --text-primary: #ededed;
+  --text-secondary: #a0a0a0;
+  --border-color: rgba(255, 255, 255, 0.1);
+  
+  /* Typography - Constitution P2 */
+  --font-size-base: 0.875rem; /* 14px */
+  --font-size-sm: 0.8125rem;  /* 13px */
+  --font-size-xs: 0.6875rem;  /* 11px */
+  --line-height-base: 1.5;
+  --line-height-tight: 1.4;
+  --line-height-relaxed: 1.6;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+@theme {
+  /* Custom colors */
+  --color-bg-primary: #0a0a0a;
+  --color-bg-secondary: #1a1a1a;
+  --color-text-primary: #ededed;
+  --color-text-secondary: #a0a0a0;
+  --color-border: rgba(255, 255, 255, 0.1);
 }
 
-@media (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: light) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f5;
+    --text-primary: #171717;
+    --text-secondary: #666666;
+    --border-color: rgba(0, 0, 0, 0.1);
+  }
+  
+  @theme {
+    --color-bg-primary: #ffffff;
+    --color-bg-secondary: #f5f5f5;
+    --color-text-primary: #171717;
+    --color-text-secondary: #666666;
+    --color-border: rgba(0, 0, 0, 0.1);
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+}
+
+/* Utility classes for consistent styling */
+.bg-primary {
+  background-color: var(--bg-primary);
+}
+
+.bg-secondary {
+  background-color: var(--bg-secondary);
+}
+
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.bg-text-primary {
+  background-color: var(--text-primary);
+}
+
+.text-bg-primary {
+  color: var(--bg-primary);
+}
+
+.border-color {
+  border-color: var(--border-color);
+}
+
+.divide-color > * + * {
+  border-top-color: var(--border-color);
+}
+
+/* Chat window animations */
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-4px);
+    opacity: 0.7;
+  }
 }
