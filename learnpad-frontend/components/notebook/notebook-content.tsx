@@ -54,35 +54,72 @@ export function NotebookContent({
 
       // Headers
       if (line.startsWith('# ')) {
+        const headingText = line.substring(2).trim();
+        const headingId = `heading-${index}-${headingText.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
         elements.push(
           <h1
             key={index}
-            className="text-2xl font-bold mb-4 mt-8 text-primary first:mt-0"
+            data-heading-id={headingId}
+            id={headingId}
+            className="text-2xl font-bold mb-4 mt-8 text-primary first:mt-0 scroll-mt-4"
           >
-            {line.substring(2)}
+            {headingText}
           </h1>
         );
         return;
       }
       if (line.startsWith('## ')) {
+        const headingText = line.substring(3).trim();
+        const headingId = `heading-${index}-${headingText.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
         elements.push(
           <h2
             key={index}
-            className="text-xl font-semibold mb-3 mt-8 text-primary first:mt-0"
+            data-heading-id={headingId}
+            id={headingId}
+            className="text-xl font-semibold mb-3 mt-8 text-primary first:mt-0 scroll-mt-4"
           >
-            {line.substring(3)}
+            {headingText}
           </h2>
         );
         return;
       }
       if (line.startsWith('### ')) {
+        const headingText = line.substring(4).trim();
+        const headingId = `heading-${index}-${headingText.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
         elements.push(
           <h3
             key={index}
-            className="text-lg font-medium mb-2 mt-6 text-primary first:mt-0"
+            data-heading-id={headingId}
+            id={headingId}
+            className="text-lg font-medium mb-2 mt-6 text-primary first:mt-0 scroll-mt-4"
           >
-            {line.substring(4)}
+            {headingText}
           </h3>
+        );
+        return;
+      }
+      // Handle h4, h5, h6 headings
+      const headingMatch = line.match(/^(#{4,6})\s+(.+)$/);
+      if (headingMatch) {
+        const level = headingMatch[1].length;
+        const headingText = headingMatch[2].trim();
+        const headingId = `heading-${index}-${headingText.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+        const className = level === 4 
+          ? 'text-base font-medium mb-2 mt-4 text-primary scroll-mt-4'
+          : level === 5
+          ? 'text-sm font-medium mb-2 mt-4 text-primary scroll-mt-4'
+          : 'text-xs font-medium mb-2 mt-4 text-primary scroll-mt-4';
+        elements.push(
+          <div
+            key={index}
+            data-heading-id={headingId}
+            id={headingId}
+            className={className}
+            role="heading"
+            aria-level={level}
+          >
+            {headingText}
+          </div>
         );
         return;
       }

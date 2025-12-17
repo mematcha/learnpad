@@ -13,6 +13,8 @@ interface NotebookMenubarProps {
   canEdit: boolean;
   onChatToggle?: () => void;
   isChatView?: boolean;
+  onOutlineToggle?: () => void;
+  isOutlineVisible?: boolean;
 }
 
 interface MenuItem {
@@ -21,9 +23,10 @@ interface MenuItem {
   href?: string;
   shortcut?: string;
   divider?: boolean;
+  checked?: boolean;
 }
 
-export function NotebookMenubar({ notebookId, canEdit, onChatToggle, isChatView }: NotebookMenubarProps) {
+export function NotebookMenubar({ notebookId, canEdit, onChatToggle, isChatView, onOutlineToggle, isOutlineVisible }: NotebookMenubarProps) {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const menuRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
@@ -67,6 +70,16 @@ export function NotebookMenubar({ notebookId, canEdit, onChatToggle, isChatView 
     { label: 'Zoom In', action: () => console.log('Zoom In'), shortcut: '⌘+' },
     { label: 'Zoom Out', action: () => console.log('Zoom Out'), shortcut: '⌘-' },
     { label: 'Reset Zoom', action: () => console.log('Reset Zoom'), shortcut: '⌘0' },
+    { divider: true },
+    { 
+      label: 'Show Outline', 
+      action: () => {
+        if (onOutlineToggle) {
+          onOutlineToggle();
+        }
+      },
+      checked: isOutlineVisible
+    },
   ];
 
   // Note: Panel toggling is handled via keyboard shortcuts in notebook-view.tsx
@@ -110,7 +123,10 @@ export function NotebookMenubar({ notebookId, canEdit, onChatToggle, isChatView 
 
               const content = (
                 <>
-                  <span className="flex-1">{item.label}</span>
+                  <span className="flex items-center gap-2 flex-1">
+                    {item.checked && <span className="text-xs">✓</span>}
+                    <span>{item.label}</span>
+                  </span>
                   {item.shortcut && (
                     <span className="text-xs text-secondary ml-4 font-mono">
                       {item.shortcut}

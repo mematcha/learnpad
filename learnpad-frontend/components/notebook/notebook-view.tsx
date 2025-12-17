@@ -11,6 +11,7 @@ import { NotebookHeader } from './notebook-header';
 import { FileTree as FileTreeComponent } from './file-tree';
 import { NotebookContent } from './notebook-content';
 import { ChatWindow } from './chat-window';
+import { Outline } from './outline';
 import { ResizablePanel, type ResizablePanelRef } from './resizable-panel';
 
 interface NotebookViewProps {
@@ -26,6 +27,7 @@ export function NotebookView({
 }: NotebookViewProps) {
   const [selectedFile, setSelectedFile] = useState<string>('/README.md');
   const [isChatView, setIsChatView] = useState(false);
+  const [isOutlineVisible, setIsOutlineVisible] = useState(false);
   const filesPanelRef = useRef<ResizablePanelRef>(null);
   const chatPanelRef = useRef<ResizablePanelRef>(null);
 
@@ -73,6 +75,8 @@ export function NotebookView({
           canEdit={true}
           onChatToggle={handleChatToggle}
           isChatView={isChatView}
+          onOutlineToggle={() => setIsOutlineVisible(!isOutlineVisible)}
+          isOutlineVisible={isOutlineVisible}
         />
         
         <div className="mt-4 flex flex-1 gap-8 min-h-0 overflow-hidden">
@@ -104,12 +108,28 @@ export function NotebookView({
                 <ChatWindow notebookId={notebook.notebook_id} />
               </div>
             ) : (
-              <div className="pr-4">
-                <NotebookContent
-                  notebookId={notebook.notebook_id}
-                  filePath={selectedFile}
-                  content={getFileContent(selectedFile)}
-                />
+              <div className="relative pr-4 min-h-full flex">
+                <div className={isOutlineVisible ? 'flex-1 pr-4' : 'flex-1'}>
+                  <NotebookContent
+                    notebookId={notebook.notebook_id}
+                    filePath={selectedFile}
+                    content={getFileContent(selectedFile)}
+                  />
+                </div>
+                {/* Outline Overlay - Sticky position, fixed at top of scroll viewport, right side, 50% height, scrollable internally */}
+                {isOutlineVisible && (
+                  <div className="sticky top-0 self-start w-64 h-1/2 bg-secondary border border-color rounded-md shadow-lg z-20 overflow-y-auto pointer-events-auto flex-shrink-0">
+                    <Outline
+                      content={getFileContent(selectedFile)}
+                      onHeadingClick={(headingId) => {
+                        const element = document.getElementById(headingId);
+                        if (element) {
+                          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </main>

@@ -10,9 +10,11 @@ interface NotebookHeaderProps {
   canEdit: boolean;
   onChatToggle?: () => void;
   isChatView?: boolean;
+  onOutlineToggle?: () => void;
+  isOutlineVisible?: boolean;
 }
 
-export function NotebookHeader({ notebook, canEdit, onChatToggle, isChatView }: NotebookHeaderProps) {
+export function NotebookHeader({ notebook, canEdit, onChatToggle, isChatView, onOutlineToggle, isOutlineVisible }: NotebookHeaderProps) {
   return (
     <header className="border-b border-color pb-3 mb-1">
       <div className="flex items-start justify-between gap-4">
@@ -35,6 +37,8 @@ export function NotebookHeader({ notebook, canEdit, onChatToggle, isChatView }: 
           canEdit={canEdit}
           onChatToggle={onChatToggle}
           isChatView={isChatView}
+          onOutlineToggle={onOutlineToggle}
+          isOutlineVisible={isOutlineVisible}
         />
       </div>
     </header>
