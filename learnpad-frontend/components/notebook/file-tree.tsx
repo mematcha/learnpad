@@ -16,49 +16,88 @@ interface FileTreeProps {
 }
 
 export function FileTree({ fileTree, notebookId, onFileSelect, selectedFile }: FileTreeProps) {
+  const [isFilesExpanded, setIsFilesExpanded] = useState(true);
+  const [isSourcesExpanded, setIsSourcesExpanded] = useState(true);
+  const [isStudioExpanded, setIsStudioExpanded] = useState(true);
+
   return (
     <nav
       className="border border-color rounded-md bg-secondary p-4 h-full overflow-y-auto flex flex-col"
       aria-label="Notebook file tree"
     >
       {/* Files Section */}
-      <div className="flex-shrink-0 mb-4">
-        <h2 className="text-sm font-semibold mb-3 text-primary">
-          Files
-        </h2>
-        <FileTreeNode
-          node={fileTree.root}
-          notebookId={notebookId}
-          level={0}
-          onFileSelect={onFileSelect}
-          selectedFile={selectedFile}
-        />
+      <div className="flex-shrink-0 mb-2">
+        <button
+          onClick={() => setIsFilesExpanded(!isFilesExpanded)}
+          className="w-full text-left text-sm font-semibold mb-3 text-primary hover:text-primary/80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 focus:ring-offset-2 rounded flex items-center gap-2 py-1"
+          aria-expanded={isFilesExpanded}
+          aria-label="Toggle Files section"
+        >
+          <span className="text-xs" aria-hidden="true">
+            {isFilesExpanded ? '▼' : '▶'}
+          </span>
+          <span>Files</span>
+        </button>
+        {isFilesExpanded && fileTree.root.children && (
+          <div>
+            {fileTree.root.children.map((child) => (
+              <FileTreeNode
+                key={child.path}
+                node={child}
+                notebookId={notebookId}
+                level={0}
+                onFileSelect={onFileSelect}
+                selectedFile={selectedFile}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Divider */}
-      <div className="border-t border-color my-4 flex-shrink-0" />
+      <div className="border-t border-color my-2 flex-shrink-0" />
 
       {/* Sources Section */}
-      <div className="flex-shrink-0 mb-4">
-        <h2 className="text-sm font-semibold mb-3 text-primary">
-          Sources
-        </h2>
-        <div className="text-xs text-secondary px-2 py-1">
-          No sources available
-        </div>
+      <div className="flex-shrink-0 mb-2">
+        <button
+          onClick={() => setIsSourcesExpanded(!isSourcesExpanded)}
+          className="w-full text-left text-sm font-semibold mb-3 text-primary hover:text-primary/80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 focus:ring-offset-2 rounded flex items-center gap-2 py-1"
+          aria-expanded={isSourcesExpanded}
+          aria-label="Toggle Sources section"
+        >
+          <span className="text-xs" aria-hidden="true">
+            {isSourcesExpanded ? '▼' : '▶'}
+          </span>
+          <span>Sources</span>
+        </button>
+        {isSourcesExpanded && (
+          <div className="text-xs text-secondary px-2 py-1">
+            No sources available
+          </div>
+        )}
       </div>
 
       {/* Divider */}
-      <div className="border-t border-color my-4 flex-shrink-0" />
+      <div className="border-t border-color my-2 flex-shrink-0" />
 
       {/* Studio Section */}
       <div className="flex-shrink-0">
-        <h2 className="text-sm font-semibold mb-3 text-primary">
-          Studio
-        </h2>
-        <div className="text-xs text-secondary px-2 py-1">
-          No studio items available
-        </div>
+        <button
+          onClick={() => setIsStudioExpanded(!isStudioExpanded)}
+          className="w-full text-left text-sm font-semibold mb-3 text-primary hover:text-primary/80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 focus:ring-offset-2 rounded flex items-center gap-2 py-1"
+          aria-expanded={isStudioExpanded}
+          aria-label="Toggle Studio section"
+        >
+          <span className="text-xs" aria-hidden="true">
+            {isStudioExpanded ? '▼' : '▶'}
+          </span>
+          <span>Studio</span>
+        </button>
+        {isStudioExpanded && (
+          <div className="text-xs text-secondary px-2 py-1">
+            No studio items available
+          </div>
+        )}
       </div>
     </nav>
   );
