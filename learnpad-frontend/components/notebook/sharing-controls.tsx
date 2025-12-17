@@ -49,51 +49,61 @@ export function SharingControls({ notebook }: SharingControlsProps) {
 
   return (
     <div>
-      <h3 className="text-base font-medium mb-3 text-primary">
-        Sharing
-      </h3>
-      <div className="space-y-md">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={isShared}
-            onChange={handleToggleSharing}
-            disabled={isUpdating}
-            className="w-4 h-4 rounded border-color bg-primary text-primary focus:ring-2 focus:ring-primary"
-            aria-label="Make notebook publicly shareable"
-          />
-          <span className="text-sm text-secondary">
-            Make this notebook publicly shareable
-          </span>
-          {isUpdating && (
-            <LoadingSpinner size="sm" className="ml-2" />
-          )}
-        </label>
+      <h2 className="text-xl font-semibold mb-6 text-primary">
+        Sharing & Privacy
+      </h2>
+      <div className="space-y-6">
+        <div>
+          <label className="flex items-start gap-3 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={isShared}
+              onChange={handleToggleSharing}
+              disabled={isUpdating}
+              className="mt-1 w-5 h-5 rounded border-color bg-primary text-primary focus:ring-2 focus:ring-primary flex-shrink-0"
+              aria-label="Make notebook publicly shareable"
+            />
+            <div className="flex-1">
+              <span className="block text-base font-medium text-primary mb-1">
+                Make this notebook publicly shareable
+              </span>
+              <span className="block text-sm text-secondary">
+                Anyone with the link can view this notebook. You can revoke access at any time.
+              </span>
+            </div>
+            {isUpdating && (
+              <LoadingSpinner size="sm" className="mt-1 flex-shrink-0" />
+            )}
+          </label>
+        </div>
         {isShared && (
-          <div className="p-3 bg-primary border border-color rounded-md">
+          <div className="space-y-2">
             <label
               htmlFor="share-link"
-              className="block text-xs font-medium mb-0.5 text-secondary"
+              className="block text-sm font-medium text-secondary"
             >
               Share Link
             </label>
-            <div className="flex gap-2">
+            <div className="flex gap-3 max-w-2xl">
               <input
                 type="text"
                 id="share-link"
                 value={shareUrl}
                 readOnly
-                className="flex-1 px-3 py-1 bg-secondary border border-color rounded-md text-xs text-secondary font-mono focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-2 min-h-[44px]"
+                className="flex-1 px-4 py-2 bg-primary border border-color rounded-md text-sm text-primary font-mono focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-primary min-h-[44px]"
                 aria-label="Share link URL"
               />
               <button
                 onClick={copyShareLink}
-                className="px-3 py-1 border border-color rounded-md text-xs font-medium hover:bg-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-2 min-h-[44px]"
+                className="px-6 py-2 border border-color rounded-md text-sm font-medium hover:bg-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-primary min-h-[44px] whitespace-nowrap"
                 aria-label="Copy share link"
               >
-                Copy
+                Copy Link
               </button>
             </div>
+            <p className="text-xs text-secondary">
+              Share this link with anyone you want to give access to this notebook.
+            </p>
           </div>
         )}
       </div>

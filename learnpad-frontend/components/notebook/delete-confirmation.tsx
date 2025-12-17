@@ -43,39 +43,46 @@ export function DeleteConfirmation({
   if (!showConfirm) {
     return (
       <div>
-        <h2 className="text-lg font-semibold mb-3 text-primary">
+        <h2 className="text-xl font-semibold mb-6 text-primary">
           Danger Zone
         </h2>
-        <button
-          onClick={() => setShowConfirm(true)}
-          className="px-4 py-2 border border-red-500/50 text-red-400 rounded-md font-medium hover:bg-red-900/20 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-2 min-h-[44px]"
-          aria-label="Delete notebook"
-        >
-          Delete Notebook
-        </button>
+        <div className="space-y-3">
+          <p className="text-sm text-secondary">
+            Once you delete a notebook, there is no going back. Please be certain.
+          </p>
+          <button
+            onClick={() => setShowConfirm(true)}
+            className="px-6 py-2.5 border border-red-500/50 text-red-400 rounded-md font-medium hover:bg-red-900/20 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-primary min-h-[44px]"
+            aria-label="Delete notebook"
+          >
+            Delete Notebook
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-3 text-primary">
+      <h2 className="text-xl font-semibold mb-6 text-primary">
         Danger Zone
       </h2>
-      <div className="p-4 border border-red-500/50 rounded-md bg-red-900/20">
-        <h3 className="text-base font-medium mb-1 text-red-400">
-          Delete Notebook
-        </h3>
-        <p className="text-sm text-secondary mb-3">
-          Are you sure you want to delete &quot;{notebookTitle}&quot;? This
-          action cannot be undone.
-        </p>
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-base font-semibold mb-2 text-red-400">
+            Delete Notebook
+          </h3>
+          <p className="text-sm text-secondary mb-4">
+            Are you sure you want to delete &quot;{notebookTitle}&quot;? This
+            action cannot be undone and all content will be permanently removed.
+          </p>
+        </div>
         {error && <ErrorMessage message={error} />}
         <div className="flex gap-3">
           <button
             onClick={handleDelete}
             disabled={isDeleting}
-            className="px-4 py-2 bg-red-500 text-white rounded-md font-medium hover:bg-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] flex items-center justify-center gap-2"
+            className="px-6 py-2.5 bg-red-500 text-white rounded-md font-medium hover:bg-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-primary disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] flex items-center justify-center gap-2"
             aria-label="Confirm delete notebook"
             aria-busy={isDeleting}
           >
@@ -85,7 +92,7 @@ export function DeleteConfirmation({
                 <span>Deleting...</span>
               </>
             ) : (
-              'Delete'
+              'Delete Notebook'
             )}
           </button>
           <button
@@ -94,7 +101,7 @@ export function DeleteConfirmation({
               setError(null);
             }}
             disabled={isDeleting}
-            className="px-4 py-2 border border-color rounded-md font-medium hover:bg-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+            className="px-6 py-2.5 border border-color rounded-md font-medium hover:bg-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-primary disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
             aria-label="Cancel deletion"
           >
             Cancel

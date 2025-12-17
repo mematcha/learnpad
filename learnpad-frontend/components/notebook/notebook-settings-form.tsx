@@ -65,62 +65,60 @@ export function NotebookSettingsForm({ notebook }: NotebookSettingsFormProps) {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-3 text-primary">
-        Notebook Information
+      <h2 className="text-xl font-semibold mb-8 text-primary">
+        General Settings
       </h2>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-lg">
-        <div>
-          <label
-            htmlFor="title"
-            className="block text-sm font-medium mb-0.5 text-secondary"
-          >
-            Title
-          </label>
-          <input
-            type="text"
-            id="title"
-            {...register('title')}
-            className="w-full px-3 py-1 bg-primary border border-color rounded-md text-sm text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-2 min-h-[44px]"
-            aria-label="Notebook title"
-            aria-required="true"
-          />
-          {errors.title && (
-            <p className="text-xs text-red-400 mt-xs" role="alert">
-              {errors.title.message}
-            </p>
-          )}
-        </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+        <div className="space-y-6">
+          <div>
+            <label
+              htmlFor="title"
+              className="block text-sm font-medium mb-2 text-secondary"
+            >
+              Title
+            </label>
+            <input
+              type="text"
+              id="title"
+              {...register('title')}
+              className="w-full max-w-md px-4 py-2 bg-primary border border-color rounded-md text-base text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-primary min-h-[44px]"
+              aria-label="Notebook title"
+              aria-required="true"
+            />
+            {errors.title && (
+              <p className="text-xs text-red-400 mt-1" role="alert">
+                {errors.title.message}
+              </p>
+            )}
+          </div>
 
-        <div>
-          <label
-            htmlFor="subject"
-            className="block text-sm font-medium mb-0.5 text-secondary"
-          >
-            Subject
-          </label>
-          <input
-            type="text"
-            id="subject"
-            {...register('subject')}
-            className="w-full px-3 py-1 bg-primary border border-color rounded-md text-sm text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-2 min-h-[44px]"
-            aria-label="Notebook subject"
-            aria-required="true"
-          />
-          {errors.subject && (
-            <p className="text-xs text-red-400 mt-xs" role="alert">
-              {errors.subject.message}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <SharingControls notebook={notebook} />
+          <div>
+            <label
+              htmlFor="subject"
+              className="block text-sm font-medium mb-2 text-secondary"
+            >
+              Subject
+            </label>
+            <input
+              type="text"
+              id="subject"
+              {...register('subject')}
+              className="w-full max-w-md px-4 py-2 bg-primary border border-color rounded-md text-base text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-primary min-h-[44px]"
+              aria-label="Notebook subject"
+              aria-required="true"
+            />
+            {errors.subject && (
+              <p className="text-xs text-red-400 mt-1" role="alert">
+                {errors.subject.message}
+              </p>
+            )}
+          </div>
         </div>
 
         {error && <ErrorMessage message={error} />}
         {success && (
           <div
-            className="p-3 border border-green-500/50 rounded-md bg-green-900/20 text-sm text-green-400"
+            className="p-4 border border-green-500/50 rounded-md bg-green-900/20 text-sm text-green-400 max-w-md"
             role="alert"
             aria-live="polite"
           >
@@ -128,23 +126,29 @@ export function NotebookSettingsForm({ notebook }: NotebookSettingsFormProps) {
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="px-4 py-2 bg-text-primary text-bg-primary rounded-md font-medium hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] flex items-center justify-center gap-2"
-          aria-label="Save notebook settings"
-          aria-busy={isSubmitting}
-        >
-          {isSubmitting ? (
-            <>
-              <LoadingSpinner size="sm" />
-              <span>Saving...</span>
-            </>
-          ) : (
-            'Save Changes'
-          )}
-        </button>
+        <div>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="px-6 py-2.5 bg-text-primary text-bg-primary rounded-md font-medium hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-primary disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] flex items-center justify-center gap-2"
+            aria-label="Save notebook settings"
+            aria-busy={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <LoadingSpinner size="sm" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              'Save Changes'
+            )}
+          </button>
+        </div>
       </form>
+
+      <div className="border-t border-color mt-12 pt-8">
+        <SharingControls notebook={notebook} />
+      </div>
     </div>
   );
 }
