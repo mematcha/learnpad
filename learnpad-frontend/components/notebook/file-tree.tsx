@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { Plus, RefreshCw } from 'lucide-react';
 import type { FileNode } from '@/types/entities';
 
 interface FileTreeProps {
@@ -26,17 +27,41 @@ export function FileTree({ fileTree, notebookId, onFileSelect, selectedFile }: F
     >
       {/* Files Section */}
       <div className="flex-shrink-0 mb-2">
-        <button
-          onClick={() => setIsFilesExpanded(!isFilesExpanded)}
-          className="w-full text-left text-sm font-semibold mb-3 text-primary hover:text-primary/80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 focus:ring-offset-2 rounded flex items-center gap-2 py-1"
-          aria-expanded={isFilesExpanded}
-          aria-label="Toggle Files section"
-        >
-          <span className="text-xs" aria-hidden="true">
-            {isFilesExpanded ? '▼' : '▶'}
-          </span>
-          <span>Files</span>
-        </button>
+        <div className="flex items-center justify-between mb-3">
+          <button
+            onClick={() => setIsFilesExpanded(!isFilesExpanded)}
+            className="flex-1 text-left text-sm font-semibold text-primary hover:text-primary/80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 focus:ring-offset-2 rounded flex items-center gap-2 py-1"
+            aria-expanded={isFilesExpanded}
+            aria-label="Toggle Files section"
+          >
+            <span className="text-xs" aria-hidden="true">
+              {isFilesExpanded ? '▼' : '▶'}
+            </span>
+            <span>Files</span>
+          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                console.log('Refresh files');
+              }}
+              className="p-1 text-secondary hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 focus:ring-offset-2 rounded"
+              aria-label="Refresh files"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                console.log('Add file');
+              }}
+              className="p-1 text-secondary hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 focus:ring-offset-2 rounded"
+              aria-label="Add file"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
         {isFilesExpanded && fileTree.root.children && (
           <div>
             {fileTree.root.children.map((child) => (
@@ -58,17 +83,29 @@ export function FileTree({ fileTree, notebookId, onFileSelect, selectedFile }: F
 
       {/* Sources Section */}
       <div className="flex-shrink-0 mb-2">
-        <button
-          onClick={() => setIsSourcesExpanded(!isSourcesExpanded)}
-          className="w-full text-left text-sm font-semibold mb-3 text-primary hover:text-primary/80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 focus:ring-offset-2 rounded flex items-center gap-2 py-1"
-          aria-expanded={isSourcesExpanded}
-          aria-label="Toggle Sources section"
-        >
-          <span className="text-xs" aria-hidden="true">
-            {isSourcesExpanded ? '▼' : '▶'}
-          </span>
-          <span>Sources</span>
-        </button>
+        <div className="flex items-center justify-between mb-3">
+          <button
+            onClick={() => setIsSourcesExpanded(!isSourcesExpanded)}
+            className="flex-1 text-left text-sm font-semibold text-primary hover:text-primary/80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 focus:ring-offset-2 rounded flex items-center gap-2 py-1"
+            aria-expanded={isSourcesExpanded}
+            aria-label="Toggle Sources section"
+          >
+            <span className="text-xs" aria-hidden="true">
+              {isSourcesExpanded ? '▼' : '▶'}
+            </span>
+            <span>Sources</span>
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('Add source');
+            }}
+            className="p-1 text-secondary hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 focus:ring-offset-2 rounded"
+            aria-label="Add source"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
         {isSourcesExpanded && (
           <div className="text-xs text-secondary px-2 py-1">
             No sources available
