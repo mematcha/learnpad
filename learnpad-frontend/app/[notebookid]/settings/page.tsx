@@ -1,9 +1,10 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { notFound, redirect } from 'next/navigation';
 import { getServerUser } from '@/lib/auth/server-auth';
 import { getNotebook } from '@/lib/api/notebooks';
-import { NotebookSettingsForm } from '@/components/notebook/notebook-settings-form';
-import { DeleteConfirmation } from '@/components/notebook/delete-confirmation';
+import { SettingsSidebar } from '@/components/notebook/settings-sidebar';
+import { SettingsContent } from '@/components/notebook/settings-content';
 import type { Notebook } from '@/types/entities';
 
 /**
@@ -124,7 +125,7 @@ export default async function NotebookSettingsPage({
 
   return (
     <main className="min-h-screen bg-primary">
-      <div className="container mx-auto px-6 py-8 max-w-4xl">
+      <div className="container mx-auto px-6 py-8 max-w-7xl">
         <div className="mb-8">
           <Link
             href={`/${notebookid}`}
@@ -138,35 +139,24 @@ export default async function NotebookSettingsPage({
           <p className="text-base text-secondary">{notebook.title}</p>
         </div>
 
-        <div className="space-y-12">
-          <NotebookSettingsForm notebook={notebook} />
-          
-          <div className="border-t border-color pt-8">
-            <h2 className="text-xl font-semibold mb-6 text-primary">
-              Notebook Information
-            </h2>
-            <dl className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <dt className="text-sm font-medium text-secondary mb-1">Notebook ID</dt>
-                <dd className="text-sm text-primary font-mono">{notebook.notebook_id}</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-secondary mb-1">Status</dt>
-                <dd className="text-sm text-primary capitalize">{notebook.status}</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-secondary mb-1">Created</dt>
-                <dd className="text-sm text-primary">{createdDate}</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-secondary mb-1">Last Updated</dt>
-                <dd className="text-sm text-primary">{updatedDate}</dd>
-              </div>
-            </dl>
-          </div>
+        <div className="flex gap-8">
+          {/* Left Sidebar - Settings Navigation */}
+          <aside className="flex-shrink-0 w-64">
+            <Suspense fallback={<div className="text-secondary">Loading...</div>}>
+              <SettingsSidebar notebookId={notebookid} />
+            </Suspense>
+          </aside>
 
-          <div className="border-t border-color pt-8">
-            <DeleteConfirmation notebookId={notebookid} notebookTitle={notebook.title} />
+          {/* Main Content Area */}
+          <div className="flex-1 min-w-0">
+            <Suspense fallback={<div className="text-secondary">Loading...</div>}>
+              <SettingsContent
+                notebook={notebook}
+                notebookId={notebookid}
+                createdDate={createdDate}
+                updatedDate={updatedDate}
+              />
+            </Suspense>
           </div>
         </div>
       </div>

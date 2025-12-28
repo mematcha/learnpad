@@ -14,19 +14,22 @@ import type { Notebook } from '@/types/entities';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { ErrorMessage } from '@/components/ui/error-message';
 import { SharingControls } from './sharing-controls';
+import { TagInput } from './tag-input';
 
 const notebookSettingsSchema = z.object({
   title: z.string().min(1).max(200),
   subject: z.string().min(1),
+  tags: z.array(z.string()).default([]),
 });
 
 type NotebookSettingsFormData = z.infer<typeof notebookSettingsSchema>;
 
 interface NotebookSettingsFormProps {
   notebook: Notebook;
+  showSharing?: boolean;
 }
 
-export function NotebookSettingsForm({ notebook }: NotebookSettingsFormProps) {
+export function NotebookSettingsForm({ notebook, showSharing = true }: NotebookSettingsFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,14 +38,19 @@ export function NotebookSettingsForm({ notebook }: NotebookSettingsFormProps) {
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<NotebookSettingsFormData>({
     resolver: zodResolver(notebookSettingsSchema),
     defaultValues: {
       title: notebook.title,
       subject: notebook.subject,
+      tags: (notebook as any).tags || [],
     },
   });
+
+  const tags = watch('tags') || [];
 
   const onSubmit = async (data: NotebookSettingsFormData) => {
     setIsSubmitting(true);
@@ -113,6 +121,31 @@ export function NotebookSettingsForm({ notebook }: NotebookSettingsFormProps) {
               </p>
             )}
           </div>
+
+          <div>
+            <label
+              htmlFor="tags"
+              className="block text-sm font-medium mb-2 text-secondary"
+            >
+              Tags
+            </label>
+            <div className="w-full max-w-md">
+              <TagInput
+                tags={tags}
+                onChange={(newTags) => setValue('tags', newTags)}
+                placeholder="Add tags to help with search (press Enter or comma to add)"
+                maxTags={20}
+              />
+            </div>
+            {errors.tags && (
+              <p className="text-xs text-red-400 mt-1" role="alert">
+                {errors.tags.message}
+              </p>
+            )}
+            <p className="text-xs text-secondary mt-1">
+              Tags help you organize and find notebooks more easily
+            </p>
+          </div>
         </div>
 
         {error && <ErrorMessage message={error} />}
@@ -146,9 +179,11 @@ export function NotebookSettingsForm({ notebook }: NotebookSettingsFormProps) {
         </div>
       </form>
 
-      <div className="border-t border-color mt-12 pt-8">
-        <SharingControls notebook={notebook} />
-      </div>
+      {showSharing && (
+        <div className="border-t border-color mt-12 pt-8">
+          <SharingControls notebook={notebook} />
+        </div>
+      )}
     </div>
   );
 }
