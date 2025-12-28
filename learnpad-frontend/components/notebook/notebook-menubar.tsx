@@ -15,6 +15,8 @@ interface NotebookMenubarProps {
   isChatView?: boolean;
   onOutlineToggle?: () => void;
   isOutlineVisible?: boolean;
+  onEditModeToggle?: () => void;
+  isEditMode?: boolean;
 }
 
 interface MenuItem {
@@ -26,7 +28,7 @@ interface MenuItem {
   checked?: boolean;
 }
 
-export function NotebookMenubar({ notebookId, canEdit, onChatToggle, isChatView, onOutlineToggle, isOutlineVisible }: NotebookMenubarProps) {
+export function NotebookMenubar({ notebookId, canEdit, onChatToggle, isChatView, onOutlineToggle, isOutlineVisible, onEditModeToggle, isEditMode }: NotebookMenubarProps) {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const menuRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
@@ -59,11 +61,24 @@ export function NotebookMenubar({ notebookId, canEdit, onChatToggle, isChatView,
   ];
 
   const editMenuItems: MenuItem[] = [
+    { 
+      label: 'Edit Mode', 
+      action: () => {
+        if (onEditModeToggle) {
+          onEditModeToggle();
+        }
+      },
+      shortcut: '⌘E',
+      checked: isEditMode
+    },
+    { divider: true },
     { label: 'Undo', action: () => console.log('Undo'), shortcut: '⌘Z', divider: false },
     { label: 'Redo', action: () => console.log('Redo'), shortcut: '⌘⇧Z' },
     { divider: true },
     { label: 'Find in Notebook', action: () => console.log('Find'), shortcut: '⌘F' },
     { label: 'Find and Replace', action: () => console.log('Replace'), shortcut: '⌘⇧F' },
+    { divider: true },
+    { label: 'AI Insert', action: () => console.log('AI Insert'), shortcut: '⌘K' },
   ];
 
   const viewMenuItems: MenuItem[] = [

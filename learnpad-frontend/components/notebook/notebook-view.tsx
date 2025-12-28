@@ -10,6 +10,7 @@ import type { Notebook, FileTree } from '@/types/entities';
 import { NotebookHeader } from './notebook-header';
 import { FileTree as FileTreeComponent } from './file-tree';
 import { NotebookContent } from './notebook-content';
+import { EditableMarkdown } from './editable-markdown';
 import { ChatWindow } from './chat-window';
 import { Outline } from './outline';
 import { StudioSidebar } from './studio-sidebar';
@@ -29,6 +30,8 @@ export function NotebookView({
   const [selectedFile, setSelectedFile] = useState<string>('/README.md');
   const [isChatView, setIsChatView] = useState(false);
   const [isOutlineVisible, setIsOutlineVisible] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedContent, setEditedContent] = useState<Record<string, string>>({});
   const filesPanelRef = useRef<ResizablePanelRef>(null);
   const studioPanelRef = useRef<ResizablePanelRef>(null);
 
@@ -42,7 +45,7 @@ export function NotebookView({
 
   // Keyboard shortcuts for panel toggling (VSCode/Cursor style)
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
       // Cmd+B or Ctrl+B - Toggle Files Panel (VSCode style)
       // Check for both lowercase and uppercase 'b' to handle different keyboard layouts
       if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && (e.key === 'b' || e.key === 'B')) {
@@ -57,15 +60,43 @@ export function NotebookView({
         e.stopPropagation();
         studioPanelRef.current?.toggle();
       }
+
+      // Cmd+E or Ctrl+E - Toggle Edit Mode (only when not in a textarea/input)
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && (e.key === 'e' || e.key === 'E')) {
+        const target = e.target as HTMLElement;
+        if (target.tagName !== 'TEXTAREA' && target.tagName !== 'INPUT') {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsEditMode(!isEditMode);
+        }
+      }
     };
 
     // Use capture phase to catch the event before other handlers
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, []);
+  }, [isEditMode]);
 
   const getFileContent = (filePath: string): string => {
+    // Use edited content if available, otherwise use original
+    if (editedContent[filePath]) {
+      return editedContent[filePath];
+    }
     return fileContents[filePath] || `# ${filePath}\n\nThis is a sample file. Content for this file is not yet available.\n\nYou can navigate through the file tree to explore different files in this notebook.`;
+  };
+
+  const handleContentChange = (filePath: string, newContent: string) => {
+    setEditedContent((prev) => ({
+      ...prev,
+      [filePath]: newContent,
+    }));
+  };
+
+  const handleSave = async () => {
+    // TODO: Implement save to API
+    console.log('Saving content:', editedContent);
+    // For now, just update the fileContents
+    // In production, this would call an API to save the file
   };
 
   return (
@@ -78,6 +109,8 @@ export function NotebookView({
           isChatView={isChatView}
           onOutlineToggle={() => setIsOutlineVisible(!isOutlineVisible)}
           isOutlineVisible={isOutlineVisible}
+          onEditModeToggle={() => setIsEditMode(!isEditMode)}
+          isEditMode={isEditMode}
         />
         
         <div className="mt-4 flex flex-1 gap-8 min-h-0 overflow-hidden">
@@ -111,11 +144,21 @@ export function NotebookView({
             ) : (
               <div className="relative pr-4 min-h-full flex">
                 <div className={isOutlineVisible ? 'flex-1 pr-4' : 'flex-1'}>
-                  <NotebookContent
-                    notebookId={notebook.notebook_id}
-                    filePath={selectedFile}
-                    content={getFileContent(selectedFile)}
-                  />
+                  {isEditMode ? (
+                    <EditableMarkdown
+                      content={getFileContent(selectedFile)}
+                      onChange={(newContent) => handleContentChange(selectedFile, newContent)}
+                      onSave={handleSave}
+                      notebookId={notebook.notebook_id}
+                      filePath={selectedFile}
+                    />
+                  ) : (
+                    <NotebookContent
+                      notebookId={notebook.notebook_id}
+                      filePath={selectedFile}
+                      content={getFileContent(selectedFile)}
+                    />
+                  )}
                 </div>
                 {/* Outline Overlay - Sticky position, fixed at top of scroll viewport, right side, 50% height, scrollable internally */}
                 {isOutlineVisible && (
