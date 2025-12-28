@@ -70,6 +70,13 @@ export function NotebookView({
           setIsEditMode(!isEditMode);
         }
       }
+
+      // Cmd+Shift+O or Ctrl+Shift+O - Toggle Outline
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && !e.altKey && (e.key === 'o' || e.key === 'O')) {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsOutlineVisible((prev) => !prev);
+      }
     };
 
     // Use capture phase to catch the event before other handlers

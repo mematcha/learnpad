@@ -56,8 +56,6 @@ export function NotebookMenubar({ notebookId, canEdit, onChatToggle, isChatView,
     { label: 'Print', action: () => window.print(), shortcut: '⌘P' },
     { divider: true },
     { label: 'Share...', action: () => console.log('Share') },
-    { divider: true },
-    { label: 'Delete Notebook', action: () => console.log('Delete'), shortcut: '⌘⌫' },
   ];
 
   const editMenuItems: MenuItem[] = [
@@ -93,6 +91,7 @@ export function NotebookMenubar({ notebookId, canEdit, onChatToggle, isChatView,
           onOutlineToggle();
         }
       },
+      shortcut: '⌘⇧O',
       checked: isOutlineVisible
     },
   ];
