@@ -12,6 +12,7 @@ import { FileTree as FileTreeComponent } from './file-tree';
 import { NotebookContent } from './notebook-content';
 import { ChatWindow } from './chat-window';
 import { Outline } from './outline';
+import { StudioSidebar } from './studio-sidebar';
 import { ResizablePanel, type ResizablePanelRef } from './resizable-panel';
 
 interface NotebookViewProps {
@@ -29,7 +30,7 @@ export function NotebookView({
   const [isChatView, setIsChatView] = useState(false);
   const [isOutlineVisible, setIsOutlineVisible] = useState(false);
   const filesPanelRef = useRef<ResizablePanelRef>(null);
-  const chatPanelRef = useRef<ResizablePanelRef>(null);
+  const studioPanelRef = useRef<ResizablePanelRef>(null);
 
   const handleFileSelect = (filePath: string) => {
     setSelectedFile(filePath);
@@ -50,11 +51,11 @@ export function NotebookView({
         filesPanelRef.current?.toggle();
       }
       
-      // Cmd+Shift+L or Ctrl+Shift+L - Toggle Chat Panel (avoids Cmd+L browser conflict)
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && !e.altKey && (e.key === 'l' || e.key === 'L')) {
+      // Cmd+Shift+S or Ctrl+Shift+S - Toggle Studio Panel
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && !e.altKey && (e.key === 's' || e.key === 'S')) {
         e.preventDefault();
         e.stopPropagation();
-        chatPanelRef.current?.toggle();
+        studioPanelRef.current?.toggle();
       }
     };
 
@@ -134,23 +135,21 @@ export function NotebookView({
             )}
           </main>
 
-          {/* Chat Window - Resizable & Collapsible (Hidden when chat view is active) */}
-          {!isChatView && (
-            <aside className="flex-shrink-0 flex flex-col min-h-0 overflow-hidden">
-              <ResizablePanel 
-                ref={chatPanelRef}
-                defaultWidth={380} 
-                minWidth={320} 
-                maxWidth={500}
-                side="left"
-                storageKey={`notebook-${notebook.notebook_id}-chat-width`}
-              >
-                <div className="h-full max-h-[50vh] pl-2 overflow-hidden flex flex-col">
-                  <ChatWindow notebookId={notebook.notebook_id} />
-                </div>
-              </ResizablePanel>
-            </aside>
-          )}
+          {/* Studio Sidebar - Right Sidebar - Resizable & Collapsible */}
+          <aside className="flex-shrink-0 flex flex-col h-full relative z-10 overflow-hidden">
+            <ResizablePanel 
+              ref={studioPanelRef}
+              defaultWidth={256} 
+              minWidth={200} 
+              maxWidth={400}
+              side="left"
+              storageKey={`notebook-${notebook.notebook_id}-studio-width`}
+            >
+              <div className="h-full pl-2 overflow-hidden flex flex-col">
+                <StudioSidebar notebookId={notebook.notebook_id} />
+              </div>
+            </ResizablePanel>
+          </aside>
         </div>
       </div>
     </div>

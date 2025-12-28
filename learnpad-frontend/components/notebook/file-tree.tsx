@@ -18,7 +18,6 @@ interface FileTreeProps {
 export function FileTree({ fileTree, notebookId, onFileSelect, selectedFile }: FileTreeProps) {
   const [isFilesExpanded, setIsFilesExpanded] = useState(true);
   const [isSourcesExpanded, setIsSourcesExpanded] = useState(true);
-  const [isStudioExpanded, setIsStudioExpanded] = useState(true);
 
   return (
     <nav
@@ -77,28 +76,6 @@ export function FileTree({ fileTree, notebookId, onFileSelect, selectedFile }: F
         )}
       </div>
 
-      {/* Divider */}
-      <div className="border-t border-color my-2 flex-shrink-0" />
-
-      {/* Studio Section */}
-      <div className="flex-shrink-0">
-        <button
-          onClick={() => setIsStudioExpanded(!isStudioExpanded)}
-          className="w-full text-left text-sm font-semibold mb-3 text-primary hover:text-primary/80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 focus:ring-offset-2 rounded flex items-center gap-2 py-1"
-          aria-expanded={isStudioExpanded}
-          aria-label="Toggle Studio section"
-        >
-          <span className="text-xs" aria-hidden="true">
-            {isStudioExpanded ? '▼' : '▶'}
-          </span>
-          <span>Studio</span>
-        </button>
-        {isStudioExpanded && (
-          <div className="text-xs text-secondary px-2 py-1">
-            No studio items available
-          </div>
-        )}
-      </div>
     </nav>
   );
 }
