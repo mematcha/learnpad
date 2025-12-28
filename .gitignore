@@ -20,3 +20,5 @@ scripts/
 __pycache__/
 .pytest_cache/
 specs/
+.env
+.DS_Store
